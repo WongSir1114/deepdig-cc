@@ -1,0 +1,10 @@
+{
+  "id": "deepdig-cc",
+  "name": "深度挖掘 · CC",
+  "version": "0.2.5",
+  "minAppVersion": "1.5.0",
+  "description": "方案2.5。Claude Opus 推理引擎 + Obsidian 知识底座。双调用模式(对话+写卡分离)·知识底座注入·不崩溃。",
+  "author": "深度挖掘",
+  "authorUrl": "https://deepdig.beaver-cloud.com",
+  "isDesktopOnly": true
+}

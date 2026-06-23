@@ -1,0 +1,25 @@
+{
+  "name": "obsidian-deepdig-cc",
+  "version": "0.1.0",
+  "description": "深度挖掘 · CC 插件 — Obsidian 内调用 Claude Code 做投研分析",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "watch": "node esbuild.config.mjs && node esbuild.config.mjs watch"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "claude-code",
+    "investment",
+    "research"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "esbuild": "^0.20.0",
+    "obsidian": "^1.5.0",
+    "typescript": "^5.3.0"
+  }
+}
