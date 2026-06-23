@@ -346,7 +346,7 @@ export class ChatView extends ItemView {
 
         if (allFileNames.length > 0) {
             this.lastWriteResult = { files: allFileNames };
-            this.addMessage('system', '📇 ' + allFileNames.join(', '));
+            this.addMessage('system', `📇 已更新 ${allFileNames.length} 张卡片`);
             this.app.vault.getMarkdownFiles();
         }
 

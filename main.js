@@ -374,7 +374,7 @@ var ChatView = class extends import_obsidian.ItemView {
       const allFileNames = [.../* @__PURE__ */ new Set([...convFiles.found, ...allFiles.found])];
       if (allFileNames.length > 0) {
         this.lastWriteResult = { files: allFileNames };
-        this.addMessage("system", "\u{1F4C7} " + allFileNames.join(", "));
+        this.addMessage("system", `\u{1F4C7} \u5DF2\u66F4\u65B0 ${allFileNames.length} \u5F20\u5361\u7247`);
         this.app.vault.getMarkdownFiles();
       }
       this.busy = false;
