@@ -268,116 +268,127 @@ var ChatView = class extends import_obsidian.ItemView {
   async runCC(userMsg) {
     const ccPath = this.plugin.settings.ccCliPath || "claude";
     const vaultPath = this.app.vault.adapter.basePath || "";
-    this.ccStartTime = Date.now();
-    const convStdin = this.buildStdin(userMsg);
-    const convOutput = await this.spawnCC(ccPath, vaultPath, convStdin, 60, true);
-    if (convOutput === null)
-      return;
-    const writeCardsMatch = convOutput.match(/##WRITE_CARDS:\s*(.+)/);
-    const cardList = writeCardsMatch ? writeCardsMatch[1].trim() : "";
-    const shouldWriteCards = cardList && cardList.toLowerCase() !== "none";
-    const convFiles = this.verifyCardsWritten();
-    if (shouldWriteCards) {
-      const cardStandards = [
-        "=== \u4EE5\u4E0B\u662F\u4E0A\u4E00\u8F6E\u5206\u6790\u7684\u5168\u90E8\u5185\u5BB9 ===",
-        convOutput,
-        "",
-        "=== \u5199\u5361\u6307\u4EE4 ===",
-        `\u57FA\u4E8E\u4EE5\u4E0A\u5206\u6790\uFF0C\u5C06\u4EE5\u4E0B\u5361\u7247\u5199\u5165 Obsidian Vault\uFF08${vaultPath}\uFF09\uFF1A`,
-        cardList,
-        "",
-        "=== \u5361\u7247\u5236\u4F5C\u6807\u51C6\uFF08\u4E0E\u5E95\u5EA7\u7248 v0.26 \u4E00\u81F4\xB7\u5F3A\u5236\u6267\u884C\uFF09===",
-        "",
-        "\u3010\u901A\u7528 frontmatter\u3011\uFF08\u6240\u6709\u5361\u7247\u5FC5\u542B\uFF09",
-        "tags: [\u7C7B\u578B, \u5B50\u6807\u7B7E]",
-        "domain: [\u9886\u57DF]",
-        "created: YYYY-MM-DD",
-        "updated: YYYY-MM-DD",
-        "version: v0.1",
-        "status: \u8349\u7A3F",
-        "linked: [[\u5361A]] [[\u5361B]] [[\u5361C]]",
-        "aliases: [\u522B\u540D]",
-        "\u951A\u70B9\u5361: true/false",
-        "\u8C03\u7528\u6B21\u6570: 0",
-        "",
-        "\u3010L4 \u5B9E\u4F53\u4E3B\u5361 frontmatter \u989D\u5916\u5B57\u6BB5\u3011",
-        "layer: L4",
-        "card_stage: seed|growing|mature",
-        "moat_score: 0-100",
-        "governance_score: 0-100",
-        "growth_quality: high|medium|low",
-        "\u5B50\u5361\u6570\u91CF: 0-7",
-        "\u5173\u952E\u8BCD\u89E6\u53D1\u8BCD: [\u8BCD1, \u8BCD2]",
-        "",
-        "\u3010L4 \u5B9E\u4F53\u4E3B\u5361\u6B63\u6587\xB710\u7EF4\u7ED3\u6784\u3011",
-        "\u2460 \u4E00\u53E5\u8BDD\u5B9A\u4F4D\uFF08\u226450\u5B57\uFF09",
-        "\u2461 \u6CBB\u7406\u4F53\u68C0 S4\uFF08\u542B\u80A1\u4E1C\u884C\u4E3A+ESG\xB7governance_score+\u4F9D\u636E\uFF09",
-        "\u2462 \u62A4\u57CE\u6CB3\u5206\u6790 S5\uFF087\u7EF4\u5EA6\u9010\u6761\xB7\u22652\u5BB6\u7ADE\u4E89\u5BF9\u624B\u5BF9\u6BD4\u8868\xB7\u6BDB\u5229\u7387/\u51C0\u5229\u7387/ROE/\u5E02\u5360\u7387\uFF09",
-        "\u2463 \u6210\u957F\u8D28\u91CF S6\uFF08\u589E\u957F\u6765\u6E90\u62C6\u89E3\uFF1A\u5185\u751F/\u5E76\u8868/\u4F1A\u8BA1/\u5468\u671F\xB7\u8FD13\u5E74\u589E\u901F\uFF09",
-        "\u2464 \u7ECF\u8425\u771F\u5B9E\u6027 S7\uFF08CFO/NI\xB7\u524D\u4E94\u5927\u5BA2\u6237\u5360\u6BD4\xB7\u4F9B\u5E94\u5546\u5360\u6BD4\xB7\u5173\u8054\u4EA4\u6613\xB7\u6D77\u5916\u6536\u5165\u5206\u5E03\uFF09",
-        "\u2465 \u4F30\u503C\u4E0E\u4FEE\u6B63 S8\uFF08PE/PB\u5206\u4F4D+\u884C\u4E1A\u5BF9\u6BD4+PE\xD7PB\u683C\u96F7\u5384\u59C6\u951A\xB7\u4E09\u60C5\u666F\u4F30\u503C\uFF09",
-        "\u2466 \u6838\u5FC3\u77DB\u76FE\uFF08\u591A\u65B9 vs \u7A7A\u65B9\xB7\u53CC\u5217\u8868\uFF09",
-        "\u2467 \u9006\u5411\u601D\u7EF4\xB7\u6700\u53EF\u80FD\u6B7B\u6CD5\uFF083\u79CD+\u91CF\u5316\u89E6\u53D1\u4FE1\u53F7\uFF09",
-        "\u2468 \u6570\u636E\u6EAF\u6E90\uFF085\u9879\u5173\u952E\u6570\u636E\xB7T1/T2/T3+\u83B7\u53D6\u65F6\u95F4\uFF09",
-        "\u2469 \u7EFC\u5408\u5224\u65AD\uFF08\u4E00\u53E5\u8BDD\uFF1A\u4E70/\u7B49/\u907F + \u6838\u5FC3\u7406\u7531\uFF09",
-        "",
-        "\u3010\u{1F4C7} \u5B50\u5361\u7D22\u5F15\u8868\u683C\u3011\uFF08\u5B9E\u4F53\u4E3B\u5361\u672B\u5C3E\u5FC5\u542B\uFF09",
-        "| \u7EF4\u5EA6 | \u5B50\u5361 | \u4E00\u53E5\u8BDD |",
-        "|------|------|------|",
-        "| \u4EA7\u54C1\u7EBF | [[\u516C\u53F8\xB7\u4EA7\u54C1\u7EBF]] | \u226420\u5B57 |",
-        "| \u80A1\u4E1C\u7ED3\u6784 | [[\u516C\u53F8\xB7\u80A1\u4E1C\u7ED3\u6784]] | \u226420\u5B57 |",
-        "| \u5BA2\u6237\u96C6\u4E2D\u5EA6 | [[\u516C\u53F8\xB7\u5BA2\u6237\u96C6\u4E2D\u5EA6]] | \u226420\u5B57 |",
-        "| \u7BA1\u7406\u5C42 | [[\u516C\u53F8\xB7\u7BA1\u7406\u5C42]] | \u226420\u5B57 |",
-        "| \u4F30\u503C\u5206\u6790 | [[\u516C\u53F8\xB7\u4F30\u503C\u5206\u6790]] | \u226420\u5B57 |",
-        "| \u98CE\u9669\u8DDF\u8E2A | [[\u516C\u53F8\xB7\u98CE\u9669\u8DDF\u8E2A]] | \u226420\u5B57 |",
-        "| \u4EA4\u53C9\u5173\u8054 | [[\u516C\u53F8\xB7\u4EA4\u53C9\u5173\u8054]] | \u226420\u5B57 |",
-        "",
-        "\u3010\u7EF4\u5EA6\u5B50\u5361\u3011\uFF086+1\u5F20\xB7\u547D\u540D\u683C\u5F0F\uFF1A{\u516C\u53F8\u540D}\xB7{\u7EF4\u5EA6}\uFF09",
-        "1. \u80A1\u4E1C\u7ED3\u6784\uFF1A\u5B9E\u63A7\u4EBA/\u524D\u5341\u5927/\u8D28\u62BC/\u589E\u51CF\u6301/\u673A\u6784\u53D8\u5316/\u56DE\u8D2D\u6267\u884C",
-        "2. \u4EA7\u54C1\u7EBF\uFF1A\u5404\u4E1A\u52A1\u5360\u6BD4/\u589E\u901F/\u6BDB\u5229\u7387/\u751F\u547D\u5468\u671F/\u5BA2\u6237",
-        "3. \u5BA2\u6237\u96C6\u4E2D\u5EA6\uFF1A\u524D\u4E94\u5927\u5BA2\u6237/\u5355\u5BA2\u4F9D\u8D56\u5EA6/\u96C6\u4E2D\u5EA6\u98CE\u9669/\u6D77\u5916\u5206\u5E03",
-        "4. \u7BA1\u7406\u5C42\uFF1A\u6838\u5FC3\u56E2\u961F/\u80CC\u666F/\u6301\u80A1/\u6CBB\u7406\u6263\u5206\u9879",
-        "5. \u4F30\u503C\u5206\u6790\uFF1APE/PB\u5206\u4F4D/\u4E09\u60C5\u666F/DCF\u53C2\u6570/\u540C\u884C\u5BF9\u6BD4",
-        "6. \u98CE\u9669\u8DDF\u8E2A\uFF1A\u98CE\u9669\u77E9\u9635\u22655\u884C/\u91CF\u5316\u89E6\u53D1\u4FE1\u53F7/next_check\u5230\u671F\u65E5",
-        "7. \u4EA4\u53C9\u5173\u8054\uFF1A\u56E0\u679C\u94FE+\u77DB\u76FE\u77E9\u9635+\u591A\u7A7A\u529B\u91CF\u5BF9\u6BD4+\u7ADE\u4E89\u5173\u7CFB\u94FE",
-        "",
-        "\u3010\u6982\u5FF5\u5361\u3011\u2192 1-\u539F\u5B50\u7B14\u8BB0/\u6982\u5FF5/{\u6982\u5FF5\u540D}.md",
-        "\u4E00\u53E5\u8BDD\u5B9A\u4E49+\u6838\u5FC3\u5185\u5BB9+\u4E3A\u4EC0\u4E48\u91CD\u8981+\u94FE\u63A5\u22653\u542B\u539F\u56E0",
-        "",
-        "\u3010\u5173\u952E\u8BCD\u5361\u3011\u2192 1-\u539F\u5B50\u7B14\u8BB0/\u5173\u952E\u8BCD/{\u5173\u952E\u8BCD}.md",
-        "frontmatter: tags: [\u5173\u952E\u8BCD, \u5B50\u6807\u7B7E] / status: \u65B0\u5174|\u8FFD\u8E2A\u4E2D|\u6210\u719F / priority: \u9AD8|\u4E2D|\u4F4E",
-        "\u6B63\u6587: \u4E00\u53E5\u8BDD\u5B9A\u4E49+\u7A7F\u884C\u4E8E\u54EA\u4E9BL2+\u4E3A\u4EC0\u4E48\u91CD\u8981+\u5F53\u524D\u9636\u6BB5+\u6765\u6E90",
-        "linked \u22651\u5F20\u5B9E\u4F53\u5361 + \u22651\u5F20L2\u8D5B\u9053\u5361",
-        "",
-        "\u3010\u5173\u7CFB\u5361\u3011\u2192 1-\u539F\u5B50\u7B14\u8BB0/\u5173\u7CFB/{A}\u2194{B}.md",
-        "frontmatter: tags: [\u5173\u7CFB, \u5B50\u6807\u7B7E] / entity_A/entity_B / relation_type / discovery / confidence / strength",
-        "\u6B63\u6587: \u5173\u7CFB\u63CF\u8FF0+\u8BC1\u636E+\u4E3A\u4EC0\u4E48\u91CD\u8981",
-        "",
-        "\u3010\u62A5\u544A\u3011\u2192 \u62A5\u544A\u8F93\u51FA/{\u6807\u9898}-YYYY-MM-DD.md",
-        "\u81EA\u7531\u683C\u5F0F\xB7\u542B\u6570\u636E\u8D28\u91CF\u58F0\u660E\u6BB5\u843D\xB7P0-0E\u5BA1\u67E5\u65E5\u5FD7\uFF08\u5982\u6709\u5B8C\u6574\u6570\u636E\u7BA1\u9053\uFF09",
-        "",
-        "\u3010\u786C\u6027\u8981\u6C42\u3011",
-        "- linked \u2265 3 \u6761\uFF0C\u6BCF\u6761\u6807\u6CE8\u94FE\u63A5\u539F\u56E0\uFF08\u2192 why\uFF09",
-        "- \u540C\u540D\u5361\u7247 \u2192 \u66F4\u65B0 version\uFF0C\u4E0D\u65B0\u5EFA",
-        "- \u9996\u6B21\u5F15\u7528 EPS/BVPS \u6CE8\u660E\u8BA1\u7B97\u53E3\u5F84",
-        "- card_stage \u5224\u5B9A\uFF1Alinked<3\u2192seed | linked\u22653+\u6709\u8BC4\u5206\u2192growing | \u22654\u7EF4\u5EA6+linked\u22655\u2192mature",
-        "- \u6570\u636E\u6807\u6CE8\u6765\u6E90\u5C42\u7EA7 T1/T2/T3 + \u83B7\u53D6\u65F6\u95F4",
-        "",
-        "\u5199\u5B8C\u540E\u5728\u672B\u5C3E\u5355\u72EC\u4E00\u884C\uFF1A##CARDS_DONE"
-      ].join("\n");
-      this.scanExistingCards();
-      await this.spawnCC(ccPath, vaultPath, cardStandards, 90, false);
+    try {
+      this.ccStartTime = Date.now();
+      const convStdin = this.buildStdin(userMsg);
+      const convOutput = await this.spawnCC(ccPath, vaultPath, convStdin, 60, true);
+      if (convOutput === null) {
+        return;
+      }
+      const writeCardsMatch = convOutput.match(/##WRITE_CARDS:\s*(.+)/);
+      const cardList = writeCardsMatch ? writeCardsMatch[1].trim() : "";
+      const shouldWriteCards = cardList && cardList.toLowerCase() !== "none";
+      const convFiles = this.verifyCardsWritten();
+      if (shouldWriteCards) {
+        const cardStandards = [
+          "=== \u4EE5\u4E0B\u662F\u4E0A\u4E00\u8F6E\u5206\u6790\u7684\u5168\u90E8\u5185\u5BB9 ===",
+          convOutput,
+          "",
+          "=== \u5199\u5361\u6307\u4EE4 ===",
+          `\u57FA\u4E8E\u4EE5\u4E0A\u5206\u6790\uFF0C\u5C06\u4EE5\u4E0B\u5361\u7247\u5199\u5165 Obsidian Vault\uFF08${vaultPath}\uFF09\uFF1A`,
+          cardList,
+          "",
+          "=== \u5361\u7247\u5236\u4F5C\u6807\u51C6\uFF08\u4E0E\u5E95\u5EA7\u7248 v0.26 \u4E00\u81F4\xB7\u5F3A\u5236\u6267\u884C\uFF09===",
+          "",
+          "\u3010\u901A\u7528 frontmatter\u3011\uFF08\u6240\u6709\u5361\u7247\u5FC5\u542B\uFF09",
+          "tags: [\u7C7B\u578B, \u5B50\u6807\u7B7E]",
+          "domain: [\u9886\u57DF]",
+          "created: YYYY-MM-DD",
+          "updated: YYYY-MM-DD",
+          "version: v0.1",
+          "status: \u8349\u7A3F",
+          "linked: [[\u5361A]] [[\u5361B]] [[\u5361C]]",
+          "aliases: [\u522B\u540D]",
+          "\u951A\u70B9\u5361: true/false",
+          "\u8C03\u7528\u6B21\u6570: 0",
+          "",
+          "\u3010L4 \u5B9E\u4F53\u4E3B\u5361 frontmatter \u989D\u5916\u5B57\u6BB5\u3011",
+          "layer: L4",
+          "card_stage: seed|growing|mature",
+          "moat_score: 0-100",
+          "governance_score: 0-100",
+          "growth_quality: high|medium|low",
+          "\u5B50\u5361\u6570\u91CF: 0-7",
+          "\u5173\u952E\u8BCD\u89E6\u53D1\u8BCD: [\u8BCD1, \u8BCD2]",
+          "",
+          "\u3010L4 \u5B9E\u4F53\u4E3B\u5361\u6B63\u6587\xB710\u7EF4\u7ED3\u6784\u3011",
+          "\u2460 \u4E00\u53E5\u8BDD\u5B9A\u4F4D\uFF08\u226450\u5B57\uFF09",
+          "\u2461 \u6CBB\u7406\u4F53\u68C0 S4\uFF08\u542B\u80A1\u4E1C\u884C\u4E3A+ESG\xB7governance_score+\u4F9D\u636E\uFF09",
+          "\u2462 \u62A4\u57CE\u6CB3\u5206\u6790 S5\uFF087\u7EF4\u5EA6\u9010\u6761\xB7\u22652\u5BB6\u7ADE\u4E89\u5BF9\u624B\u5BF9\u6BD4\u8868\xB7\u6BDB\u5229\u7387/\u51C0\u5229\u7387/ROE/\u5E02\u5360\u7387\uFF09",
+          "\u2463 \u6210\u957F\u8D28\u91CF S6\uFF08\u589E\u957F\u6765\u6E90\u62C6\u89E3\uFF1A\u5185\u751F/\u5E76\u8868/\u4F1A\u8BA1/\u5468\u671F\xB7\u8FD13\u5E74\u589E\u901F\uFF09",
+          "\u2464 \u7ECF\u8425\u771F\u5B9E\u6027 S7\uFF08CFO/NI\xB7\u524D\u4E94\u5927\u5BA2\u6237\u5360\u6BD4\xB7\u4F9B\u5E94\u5546\u5360\u6BD4\xB7\u5173\u8054\u4EA4\u6613\xB7\u6D77\u5916\u6536\u5165\u5206\u5E03\uFF09",
+          "\u2465 \u4F30\u503C\u4E0E\u4FEE\u6B63 S8\uFF08PE/PB\u5206\u4F4D+\u884C\u4E1A\u5BF9\u6BD4+PE\xD7PB\u683C\u96F7\u5384\u59C6\u951A\xB7\u4E09\u60C5\u666F\u4F30\u503C\uFF09",
+          "\u2466 \u6838\u5FC3\u77DB\u76FE\uFF08\u591A\u65B9 vs \u7A7A\u65B9\xB7\u53CC\u5217\u8868\uFF09",
+          "\u2467 \u9006\u5411\u601D\u7EF4\xB7\u6700\u53EF\u80FD\u6B7B\u6CD5\uFF083\u79CD+\u91CF\u5316\u89E6\u53D1\u4FE1\u53F7\uFF09",
+          "\u2468 \u6570\u636E\u6EAF\u6E90\uFF085\u9879\u5173\u952E\u6570\u636E\xB7T1/T2/T3+\u83B7\u53D6\u65F6\u95F4\uFF09",
+          "\u2469 \u7EFC\u5408\u5224\u65AD\uFF08\u4E00\u53E5\u8BDD\uFF1A\u4E70/\u7B49/\u907F + \u6838\u5FC3\u7406\u7531\uFF09",
+          "",
+          "\u3010\u{1F4C7} \u5B50\u5361\u7D22\u5F15\u8868\u683C\u3011\uFF08\u5B9E\u4F53\u4E3B\u5361\u672B\u5C3E\u5FC5\u542B\uFF09",
+          "| \u7EF4\u5EA6 | \u5B50\u5361 | \u4E00\u53E5\u8BDD |",
+          "|------|------|------|",
+          "| \u4EA7\u54C1\u7EBF | [[\u516C\u53F8\xB7\u4EA7\u54C1\u7EBF]] | \u226420\u5B57 |",
+          "| \u80A1\u4E1C\u7ED3\u6784 | [[\u516C\u53F8\xB7\u80A1\u4E1C\u7ED3\u6784]] | \u226420\u5B57 |",
+          "| \u5BA2\u6237\u96C6\u4E2D\u5EA6 | [[\u516C\u53F8\xB7\u5BA2\u6237\u96C6\u4E2D\u5EA6]] | \u226420\u5B57 |",
+          "| \u7BA1\u7406\u5C42 | [[\u516C\u53F8\xB7\u7BA1\u7406\u5C42]] | \u226420\u5B57 |",
+          "| \u4F30\u503C\u5206\u6790 | [[\u516C\u53F8\xB7\u4F30\u503C\u5206\u6790]] | \u226420\u5B57 |",
+          "| \u98CE\u9669\u8DDF\u8E2A | [[\u516C\u53F8\xB7\u98CE\u9669\u8DDF\u8E2A]] | \u226420\u5B57 |",
+          "| \u4EA4\u53C9\u5173\u8054 | [[\u516C\u53F8\xB7\u4EA4\u53C9\u5173\u8054]] | \u226420\u5B57 |",
+          "",
+          "\u3010\u7EF4\u5EA6\u5B50\u5361\u3011\uFF086+1\u5F20\xB7\u547D\u540D\u683C\u5F0F\uFF1A{\u516C\u53F8\u540D}\xB7{\u7EF4\u5EA6}\uFF09",
+          "1. \u80A1\u4E1C\u7ED3\u6784\uFF1A\u5B9E\u63A7\u4EBA/\u524D\u5341\u5927/\u8D28\u62BC/\u589E\u51CF\u6301/\u673A\u6784\u53D8\u5316/\u56DE\u8D2D\u6267\u884C",
+          "2. \u4EA7\u54C1\u7EBF\uFF1A\u5404\u4E1A\u52A1\u5360\u6BD4/\u589E\u901F/\u6BDB\u5229\u7387/\u751F\u547D\u5468\u671F/\u5BA2\u6237",
+          "3. \u5BA2\u6237\u96C6\u4E2D\u5EA6\uFF1A\u524D\u4E94\u5927\u5BA2\u6237/\u5355\u5BA2\u4F9D\u8D56\u5EA6/\u96C6\u4E2D\u5EA6\u98CE\u9669/\u6D77\u5916\u5206\u5E03",
+          "4. \u7BA1\u7406\u5C42\uFF1A\u6838\u5FC3\u56E2\u961F/\u80CC\u666F/\u6301\u80A1/\u6CBB\u7406\u6263\u5206\u9879",
+          "5. \u4F30\u503C\u5206\u6790\uFF1APE/PB\u5206\u4F4D/\u4E09\u60C5\u666F/DCF\u53C2\u6570/\u540C\u884C\u5BF9\u6BD4",
+          "6. \u98CE\u9669\u8DDF\u8E2A\uFF1A\u98CE\u9669\u77E9\u9635\u22655\u884C/\u91CF\u5316\u89E6\u53D1\u4FE1\u53F7/next_check\u5230\u671F\u65E5",
+          "7. \u4EA4\u53C9\u5173\u8054\uFF1A\u56E0\u679C\u94FE+\u77DB\u76FE\u77E9\u9635+\u591A\u7A7A\u529B\u91CF\u5BF9\u6BD4+\u7ADE\u4E89\u5173\u7CFB\u94FE",
+          "",
+          "\u3010\u6982\u5FF5\u5361\u3011\u2192 1-\u539F\u5B50\u7B14\u8BB0/\u6982\u5FF5/{\u6982\u5FF5\u540D}.md",
+          "\u4E00\u53E5\u8BDD\u5B9A\u4E49+\u6838\u5FC3\u5185\u5BB9+\u4E3A\u4EC0\u4E48\u91CD\u8981+\u94FE\u63A5\u22653\u542B\u539F\u56E0",
+          "",
+          "\u3010\u5173\u952E\u8BCD\u5361\u3011\u2192 1-\u539F\u5B50\u7B14\u8BB0/\u5173\u952E\u8BCD/{\u5173\u952E\u8BCD}.md",
+          "frontmatter: tags: [\u5173\u952E\u8BCD, \u5B50\u6807\u7B7E] / status: \u65B0\u5174|\u8FFD\u8E2A\u4E2D|\u6210\u719F / priority: \u9AD8|\u4E2D|\u4F4E",
+          "\u6B63\u6587: \u4E00\u53E5\u8BDD\u5B9A\u4E49+\u7A7F\u884C\u4E8E\u54EA\u4E9BL2+\u4E3A\u4EC0\u4E48\u91CD\u8981+\u5F53\u524D\u9636\u6BB5+\u6765\u6E90",
+          "linked \u22651\u5F20\u5B9E\u4F53\u5361 + \u22651\u5F20L2\u8D5B\u9053\u5361",
+          "",
+          "\u3010\u5173\u7CFB\u5361\u3011\u2192 1-\u539F\u5B50\u7B14\u8BB0/\u5173\u7CFB/{A}\u2194{B}.md",
+          "frontmatter: tags: [\u5173\u7CFB, \u5B50\u6807\u7B7E] / entity_A/entity_B / relation_type / discovery / confidence / strength",
+          "\u6B63\u6587: \u5173\u7CFB\u63CF\u8FF0+\u8BC1\u636E+\u4E3A\u4EC0\u4E48\u91CD\u8981",
+          "",
+          "\u3010\u62A5\u544A\u3011\u2192 \u62A5\u544A\u8F93\u51FA/{\u6807\u9898}-YYYY-MM-DD.md",
+          "\u81EA\u7531\u683C\u5F0F\xB7\u542B\u6570\u636E\u8D28\u91CF\u58F0\u660E\u6BB5\u843D\xB7P0-0E\u5BA1\u67E5\u65E5\u5FD7\uFF08\u5982\u6709\u5B8C\u6574\u6570\u636E\u7BA1\u9053\uFF09",
+          "",
+          "\u3010\u786C\u6027\u8981\u6C42\u3011",
+          "- linked \u2265 3 \u6761\uFF0C\u6BCF\u6761\u6807\u6CE8\u94FE\u63A5\u539F\u56E0\uFF08\u2192 why\uFF09",
+          "- \u540C\u540D\u5361\u7247 \u2192 \u66F4\u65B0 version\uFF0C\u4E0D\u65B0\u5EFA",
+          "- \u9996\u6B21\u5F15\u7528 EPS/BVPS \u6CE8\u660E\u8BA1\u7B97\u53E3\u5F84",
+          "- card_stage \u5224\u5B9A\uFF1Alinked<3\u2192seed | linked\u22653+\u6709\u8BC4\u5206\u2192growing | \u22654\u7EF4\u5EA6+linked\u22655\u2192mature",
+          "- \u6570\u636E\u6807\u6CE8\u6765\u6E90\u5C42\u7EA7 T1/T2/T3 + \u83B7\u53D6\u65F6\u95F4",
+          "",
+          "\u5199\u5B8C\u540E\u5728\u672B\u5C3E\u5355\u72EC\u4E00\u884C\uFF1A##CARDS_DONE"
+        ].join("\n");
+        this.scanExistingCards();
+        await this.spawnCC(ccPath, vaultPath, cardStandards, 90, false);
+      }
+      const allFiles = this.verifyCardsWritten();
+      const allFileNames = [.../* @__PURE__ */ new Set([...convFiles.found, ...allFiles.found])];
+      if (allFileNames.length > 0) {
+        this.lastWriteResult = { files: allFileNames };
+        this.addMessage("system", "\u{1F4C7} " + allFileNames.join(", "));
+        this.app.vault.getMarkdownFiles();
+      }
+      this.busy = false;
+      this.sendBtn.disabled = false;
+      this.stopBtn.style.display = "none";
+    } catch (e) {
+      console.error("runCC \u5F02\u5E38:", e);
+      this.removeSystemMessages();
+      this.removeStreamBubble();
+      this.addMessage("error", "\u63D2\u4EF6\u5F02\u5E38: " + (e?.message || String(e)));
+      this.busy = false;
+      this.sendBtn.disabled = false;
+      this.stopBtn.style.display = "none";
     }
-    const allFiles = this.verifyCardsWritten();
-    const allFileNames = [.../* @__PURE__ */ new Set([...convFiles.found, ...allFiles.found])];
-    if (allFileNames.length > 0) {
-      this.lastWriteResult = { files: allFileNames };
-      this.addMessage("system", "\u{1F4C7} " + allFileNames.join(", "));
-      this.app.vault.getMarkdownFiles();
-    }
-    this.busy = false;
-    this.sendBtn.disabled = false;
-    this.stopBtn.style.display = "none";
   }
   /** 方案2.5：统一的 spawn CC 方法 */
   spawnCC(ccPath, vaultPath, stdinContent, maxTurns, renderToUser) {

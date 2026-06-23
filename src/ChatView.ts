@@ -223,15 +223,19 @@ export class ChatView extends ItemView {
         const ccPath = this.plugin.settings.ccCliPath || 'claude';
         const vaultPath = (this.app.vault.adapter as any).basePath || '';
 
-        // 第一步：对话调用（分析 + 回复）
-        this.ccStartTime = Date.now();
-        const convStdin = this.buildStdin(userMsg);
-        const convOutput = await this.spawnCC(ccPath, vaultPath, convStdin, 60, true);
+        try {
+            // 第一步：对话调用（分析 + 回复）
+            this.ccStartTime = Date.now();
+            const convStdin = this.buildStdin(userMsg);
+            const convOutput = await this.spawnCC(ccPath, vaultPath, convStdin, 60, true);
 
-        if (convOutput === null) return; // CC 启动失败或异常退出·已在 spawnCC 内处理
+            if (convOutput === null) {
+                // spawnCC 已在内部处理 UI 清理
+                return;
+            }
 
-        // 解析 ##WRITE_CARDS 标记
-        const writeCardsMatch = convOutput.match(/##WRITE_CARDS:\s*(.+)/);
+            // 解析 ##WRITE_CARDS 标记
+            const writeCardsMatch = convOutput.match(/##WRITE_CARDS:\s*(.+)/);
         const cardList = writeCardsMatch
             ? writeCardsMatch[1].trim()
             : '';
@@ -347,6 +351,15 @@ export class ChatView extends ItemView {
         }
 
         this.busy = false; this.sendBtn.disabled = false; this.stopBtn.style.display = 'none';
+        } catch (e: any) {
+            console.error('runCC 异常:', e);
+            this.removeSystemMessages();
+            this.removeStreamBubble();
+            this.addMessage('error', '插件异常: ' + (e?.message || String(e)));
+            this.busy = false;
+            this.sendBtn.disabled = false;
+            this.stopBtn.style.display = 'none';
+        }
     }
 
     /** 方案2.5：统一的 spawn CC 方法 */
