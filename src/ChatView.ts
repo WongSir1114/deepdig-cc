@@ -462,13 +462,18 @@ export class ChatView extends ItemView {
         this.scrollToBottom();
     }
 
+    private stripCardMark(text: string): string {
+        return text.replace(/\n*##WRITE_CARDS:.*(\n|$)/g, '').trim();
+    }
+
     private finalizeStreamBubble() {
         if (!this.currentStreamEl) return;
-        const c = this.currentStreamContent
-            .replace(/\x1b\[[0-9;]*m/g, '')
-            .replace(/⏺.*?(\n|$)/g, '')
-            .replace(/⎿.*?(\n|$)/g, '')
-            .trim();
+        const c = this.stripCardMark(
+            this.currentStreamContent
+                .replace(/\x1b\[[0-9;]*m/g, '')
+                .replace(/⏺.*?(\n|$)/g, '')
+                .replace(/⎿.*?(\n|$)/g, '')
+        );
         if (!c) {
             this.removeStreamBubble();
             this.addMessage('ai', '（CC 未返回内容）');

@@ -469,10 +469,15 @@ var ChatView = class extends import_obsidian.ItemView {
     }
     this.scrollToBottom();
   }
+  stripCardMark(text) {
+    return text.replace(/\n*##WRITE_CARDS:.*(\n|$)/g, "").trim();
+  }
   finalizeStreamBubble() {
     if (!this.currentStreamEl)
       return;
-    const c = this.currentStreamContent.replace(/\x1b\[[0-9;]*m/g, "").replace(/⏺.*?(\n|$)/g, "").replace(/⎿.*?(\n|$)/g, "").trim();
+    const c = this.stripCardMark(
+      this.currentStreamContent.replace(/\x1b\[[0-9;]*m/g, "").replace(/⏺.*?(\n|$)/g, "").replace(/⎿.*?(\n|$)/g, "")
+    );
     if (!c) {
       this.removeStreamBubble();
       this.addMessage("ai", "\uFF08CC \u672A\u8FD4\u56DE\u5185\u5BB9\uFF09");
