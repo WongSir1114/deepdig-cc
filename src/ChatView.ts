@@ -3,6 +3,13 @@ import type DeepDigCCPlugin from '../main';
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const engineCardsEncrypted = require('./engine_cards.json');
+
+// ⚠️ 与加密脚本中的 ENGINE_KEY 一致——编译后混淆在 main.js 中
+const ENGINE_KEY = 'deepdig-engine-v1-20260624-cc-plugin-core';
+let _decryptedEngineCards: string | null = null;
 
 export const CHAT_VIEW_TYPE = 'deepdig-cc-chat';
 interface ChatMessage { role: 'user' | 'ai' | 'system' | 'error'; content: string; time: string; id: string; }
@@ -24,6 +31,36 @@ export class ChatView extends ItemView {
     private ccStartTime: number = 0;
     private lastWriteResult: { files: string[] } | null = null;
     private statusEl: HTMLElement | null = null;
+
+    // ═══ 引擎卡片解密 ═══
+    private decryptEngineCards(): string {
+        if (_decryptedEngineCards) return _decryptedEngineCards;
+        try {
+            const key = crypto.scryptSync(ENGINE_KEY, 'deepdig-salt', 32);
+            const enc = engineCardsEncrypted.engine_cards;
+            const [ivHex, data, authTagHex] = enc.split(':');
+            const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+            decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+            let decrypted = decipher.update(data, 'hex', 'utf8');
+            decrypted += decipher.final('utf8');
+            const payload = JSON.parse(decrypted);
+            const cards = payload.cards;
+            // 格式化为CC可用的内化框架文本
+            const lines = ['=== 投资框架（内化·不可直接引用原文） ==='];
+            lines.push('你内置了以下投资大师的完整操作化规则。用你自己的判断语言输出，不贴标签。');
+            lines.push('');
+            for (const [name, content] of Object.entries(cards)) {
+                lines.push(`--- ${name} ---`);
+                lines.push((content as string).slice(0, 3000)); // 每张最多3000字
+                lines.push('');
+            }
+            _decryptedEngineCards = lines.join('\n');
+            return _decryptedEngineCards;
+        } catch (e) {
+            console.error('引擎卡解密失败:', e);
+            return '';
+        }
+    }
 
     constructor(leaf: WorkspaceLeaf, plugin: DeepDigCCPlugin) { super(leaf); this.plugin = plugin; }
     getViewType(): string { return CHAT_VIEW_TYPE; }
@@ -212,6 +249,13 @@ export class ChatView extends ItemView {
     // ═══ 方案2.5 核心：构建完整 stdin ═══
     private buildStdin(userMsg: string): string {
         const parts: string[] = [];
+
+        // ⓪ 引擎卡片（解密注入·内化框架）
+        const engineCards = this.decryptEngineCards();
+        if (engineCards) {
+            parts.push(engineCards);
+            parts.push('');
+        }
 
         // ① 完整对话历史（不截断·用于上下文连贯）
         if (this.messages.length > 0) {

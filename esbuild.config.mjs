@@ -9,10 +9,10 @@ const opts = {
   entryPoints: ['main.ts'],
   bundle: true,
   outfile: 'main.js',
-  external: ['obsidian', 'electron', 'child_process', 'fs', 'path'],
+  external: ['obsidian', 'electron', 'child_process', 'fs', 'path', 'crypto'],
   format: 'cjs',
   target: 'es2022',
-  platform: 'browser',
+  platform: 'node',
   sourcemap: prod ? false : 'inline',
   logLevel: 'info',
 };
