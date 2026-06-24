@@ -246,3 +246,84 @@
   .dd-body { max-width: 90%; }
   .dd-bubble { font-size: 12px; padding: 6px 10px; }
 }
+
+/* ── 状态指示器（思考/写卡动画）── */
+.dd-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  animation: dd-fadein 0.3s ease;
+}
+.dd-status-icon {
+  width: 16px; height: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.dd-status.thinking .dd-status-icon::after {
+  content: '';
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  animation: dd-pulse 1.2s ease-in-out infinite;
+}
+.dd-status.cards .dd-status-icon::after {
+  content: '📇';
+  font-size: 14px;
+  animation: dd-bounce 0.6s ease-in-out infinite;
+}
+.dd-status .dd-status-text { flex: 1; }
+.dd-status .dd-status-dots::after {
+  content: '';
+  animation: dd-dots 1.5s steps(4, end) infinite;
+}
+@keyframes dd-dots {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: ''; }
+}
+@keyframes dd-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%      { opacity: 1;   transform: scale(1.2); }
+}
+@keyframes dd-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes dd-fadein {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 卡片通知（可点击展开）── */
+.dd-card-notice {
+  padding: 6px 14px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  animation: dd-fadein 0.3s ease;
+}
+.dd-card-notice:hover {
+  color: var(--text-accent);
+}
+.dd-card-notice .dd-card-count {
+  font-weight: 600;
+  color: var(--text-accent);
+}
+.dd-card-list {
+  display: none;
+  padding: 4px 14px 8px 28px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.dd-card-list.open { display: block; animation: dd-fadein 0.2s ease; }
+.dd-card-list a {
+  color: var(--text-accent);
+  text-decoration: none;
+  display: block;
+  padding: 1px 0;
+}
+.dd-card-list a:hover { text-decoration: underline; }

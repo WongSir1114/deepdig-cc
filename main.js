@@ -56,6 +56,7 @@ var ChatView = class extends import_obsidian.ItemView {
   cardSnapshot = /* @__PURE__ */ new Set();
   ccStartTime = 0;
   lastWriteResult = null;
+  statusEl = null;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -102,6 +103,41 @@ var ChatView = class extends import_obsidian.ItemView {
   }
   async onClose() {
     this.stopCC();
+  }
+  // ═══ UI 状态指示器 ═══
+  showStatus(iconType, text) {
+    this.removeStatus();
+    const el = this.msgContainer.createDiv(`dd-status ${iconType}`);
+    const ic = el.createDiv("dd-status-icon");
+    el.createSpan("dd-status-text").setText(text);
+    el.createSpan("dd-status-dots");
+    this.statusEl = el;
+    this.scrollToBottom();
+    return el;
+  }
+  removeStatus() {
+    if (this.statusEl) {
+      this.statusEl.remove();
+      this.statusEl = null;
+    }
+  }
+  showCardNotice(files) {
+    const unique = [...new Set(files)];
+    const el = this.msgContainer.createDiv("dd-card-notice");
+    el.createSpan().setText("\u{1F4C7} ");
+    const cnt = el.createSpan("dd-card-count");
+    cnt.setText(`\u5DF2\u66F4\u65B0 ${unique.length} \u5F20\u5361\u7247`);
+    el.createSpan().setText(" \uFF08\u70B9\u51FB\u5C55\u5F00\uFF09");
+    const list = this.msgContainer.createDiv("dd-card-list");
+    for (const f of unique) {
+      list.createEl("a", { text: f }).onclick = () => {
+        this.app.workspace.openLinkText(f, "", false);
+      };
+    }
+    el.onclick = () => {
+      list.classList.toggle("open");
+    };
+    this.scrollToBottom();
   }
   async sendMessage() {
     if (this.busy)
@@ -270,8 +306,10 @@ var ChatView = class extends import_obsidian.ItemView {
     const vaultPath = this.app.vault.adapter.basePath || "";
     try {
       this.ccStartTime = Date.now();
+      this.showStatus("thinking", "\u6DF1\u5EA6\u6316\u6398 \xB7 \u6B63\u5728\u5206\u6790");
       const convStdin = this.buildStdin(userMsg);
       const convOutput = await this.spawnCC(ccPath, vaultPath, convStdin, 60, true);
+      this.removeStatus();
       if (convOutput === null) {
         return;
       }
@@ -280,6 +318,7 @@ var ChatView = class extends import_obsidian.ItemView {
       const shouldWriteCards = cardList && cardList.toLowerCase() !== "none";
       const convFiles = this.verifyCardsWritten();
       if (shouldWriteCards) {
+        this.showStatus("cards", `\u6B63\u5728\u751F\u6210\u5361\u7247\uFF1A${cardList.slice(0, 60)}...`);
         const cardStandards = [
           "\u3010\u786C\u7EA6\u675F\u2014\u2014\u8FDD\u53CD\u5219\u5199\u5361\u65E0\u6548\u3011",
           "- \u53EA\u5199\u4E0B\u9762\u5217\u51FA\u7684\u5361\u7247\u3002\u4E0D\u78B0\u4EFB\u4F55\u5176\u4ED6\u6587\u4EF6\u3002\u4E0D\u4FEE\u6539\u5DF2\u6709\u5361\u7247\u7684\u5185\u5BB9\u3002",
@@ -376,13 +415,14 @@ var ChatView = class extends import_obsidian.ItemView {
         ].join("\n");
         this.scanExistingCards();
         await this.spawnCC(ccPath, vaultPath, cardStandards, 40, false);
+        this.removeStatus();
       }
       const allFiles = this.verifyCardsWritten();
       const newFiles = allFiles.found.filter((f) => !this.cardSnapshot.has(f));
       const allFileNames = [.../* @__PURE__ */ new Set([...convFiles.found.filter((f) => !this.cardSnapshot.has(f)), ...newFiles])];
       if (allFileNames.length > 0) {
         this.lastWriteResult = { files: allFileNames };
-        this.addMessage("system", `\u{1F4C7} \u5DF2\u66F4\u65B0 ${allFileNames.length} \u5F20\u5361\u7247`);
+        this.showCardNotice(allFileNames);
         this.app.vault.getMarkdownFiles();
       }
       this.busy = false;

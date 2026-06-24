@@ -23,6 +23,7 @@ export class ChatView extends ItemView {
     private cardSnapshot: Set<string> = new Set();
     private ccStartTime: number = 0;
     private lastWriteResult: { files: string[] } | null = null;
+    private statusEl: HTMLElement | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: DeepDigCCPlugin) { super(leaf); this.plugin = plugin; }
     getViewType(): string { return CHAT_VIEW_TYPE; }
@@ -45,6 +46,37 @@ export class ChatView extends ItemView {
         this.renderWelcome();
     }
     async onClose() { this.stopCC(); }
+
+    // ═══ UI 状态指示器 ═══
+    private showStatus(iconType: 'thinking' | 'cards', text: string): HTMLElement {
+        this.removeStatus();
+        const el = this.msgContainer.createDiv(`dd-status ${iconType}`);
+        const ic = el.createDiv('dd-status-icon');
+        el.createSpan('dd-status-text').setText(text);
+        el.createSpan('dd-status-dots');
+        this.statusEl = el;
+        this.scrollToBottom();
+        return el;
+    }
+    private removeStatus() {
+        if (this.statusEl) { this.statusEl.remove(); this.statusEl = null; }
+    }
+    private showCardNotice(files: string[]) {
+        const unique = [...new Set(files)];
+        const el = this.msgContainer.createDiv('dd-card-notice');
+        el.createSpan().setText('📇 ');
+        const cnt = el.createSpan('dd-card-count');
+        cnt.setText(`已更新 ${unique.length} 张卡片`);
+        el.createSpan().setText(' （点击展开）');
+        const list = this.msgContainer.createDiv('dd-card-list');
+        for (const f of unique) {
+            list.createEl('a', { text: f }).onclick = () => {
+                this.app.workspace.openLinkText(f, '', false);
+            };
+        }
+        el.onclick = () => { list.classList.toggle('open'); };
+        this.scrollToBottom();
+    }
 
     async sendMessage() {
         if (this.busy) return; const t = this.inputEl.value.trim(); if (!t) return;
@@ -224,13 +256,14 @@ export class ChatView extends ItemView {
         const vaultPath = (this.app.vault.adapter as any).basePath || '';
 
         try {
-            // 第一步：对话调用（分析 + 回复）
+            // 第一步：思考动画——对话调用（分析 + 回复）
             this.ccStartTime = Date.now();
+            this.showStatus('thinking', '深度挖掘 · 正在分析');
             const convStdin = this.buildStdin(userMsg);
             const convOutput = await this.spawnCC(ccPath, vaultPath, convStdin, 60, true);
 
+            this.removeStatus();
             if (convOutput === null) {
-                // spawnCC 已在内部处理 UI 清理
                 return;
             }
 
@@ -244,8 +277,10 @@ export class ChatView extends ItemView {
         // 检测本轮对话调用写的新文件
         const convFiles = this.verifyCardsWritten();
 
-        // 第二步：写卡调用（如果有卡片要写）
+        // 第二步：写卡调用，带写卡动画
         if (shouldWriteCards) {
+            this.showStatus('cards', `正在生成卡片：${cardList.slice(0, 60)}...`);
+
             // ═══ 底座版卡片标准（v0.26·与本地CC一致）═══
             const cardStandards = [
                 '【硬约束——违反则写卡无效】',
@@ -344,6 +379,7 @@ export class ChatView extends ItemView {
             // 写卡调用 —— 静默·不渲染（减少turns至40·只写新卡）
             this.scanExistingCards();
             await this.spawnCC(ccPath, vaultPath, cardStandards, 40, false);
+            this.removeStatus();
         }
 
         // 只显示真正新建的文件（不在快照中的）·不显示被mtime误判的旧文件
@@ -353,7 +389,7 @@ export class ChatView extends ItemView {
 
         if (allFileNames.length > 0) {
             this.lastWriteResult = { files: allFileNames };
-            this.addMessage('system', `📇 已更新 ${allFileNames.length} 张卡片`);
+            this.showCardNotice(allFileNames);
             this.app.vault.getMarkdownFiles();
         }
 
