@@ -99,7 +99,13 @@ var ChatView = class extends import_obsidian.ItemView {
     this.stopBtn.onclick = () => this.stopCC();
     this.sendBtn = br.createEl("button", { text: "\u53D1\u9001", cls: "dd-send-btn" });
     this.sendBtn.onclick = () => this.sendMessage();
-    this.renderWelcome();
+    await this.loadHistory();
+    if (this.messages.length > 0) {
+      this.messages.forEach((m) => this.renderMessage(m));
+      this.scrollToBottom();
+    } else {
+      this.renderWelcome();
+    }
   }
   async onClose() {
     this.stopCC();

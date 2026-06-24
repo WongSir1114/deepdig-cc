@@ -43,7 +43,13 @@ export class ChatView extends ItemView {
         const br = f.createDiv('dd-btn-row'); br.createSpan('dd-hint').setText('Enter 发送 · Shift+Enter 换行');
         this.stopBtn = br.createEl('button', { text: '⏹ 停止', cls: 'dd-stop-btn' }); this.stopBtn.style.display = 'none'; this.stopBtn.onclick = () => this.stopCC();
         this.sendBtn = br.createEl('button', { text: '发送', cls: 'dd-send-btn' }); this.sendBtn.onclick = () => this.sendMessage();
-        this.renderWelcome();
+        await this.loadHistory();
+        if (this.messages.length > 0) {
+            this.messages.forEach(m => this.renderMessage(m));
+            this.scrollToBottom();
+        } else {
+            this.renderWelcome();
+        }
     }
     async onClose() { this.stopCC(); }
 
