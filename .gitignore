@@ -2,3 +2,6 @@ node_modules/
 *.js.map
 .DS_Store
 .hotreload
+_tmp/
+release/
+*.bak

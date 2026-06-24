@@ -157,59 +157,92 @@ var ChatView = class extends import_obsidian.ItemView {
   async onClose() {
     this.stopCC();
   }
-  // ═══ 授权验证（商业版 v1.0） ═══
-  authToken = null;
-  licenseExpired = false;
-  trialDaysLeft = 0;
+  // ═══ 授权验证（商业版 v1.1·Gumroad License Key） ═══
+  licenseValid = false;
+  licenseKey = null;
+  lastGumroadCheck = 0;
   async verifyLicense() {
-    const token = await this.loadStoredToken();
-    if (!token) {
-      this.licenseExpired = false;
-      return;
-    }
-    try {
-      const resp = await fetch("https://deepdig.beaver-cloud.com/api/verify-subscription", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
-      });
-      if (resp.status === 401) {
-        this.licenseExpired = true;
-        this.showLicenseExpiredModal();
+    this.licenseKey = await this.loadLicenseKey();
+    if (!this.licenseKey) {
+      const firstRun = await this.getFirstRunDate();
+      if (!firstRun) {
+        await this.setFirstRunDate((/* @__PURE__ */ new Date()).toISOString());
+        this.licenseValid = true;
         return;
       }
-      const data = await resp.json();
-      if (data.status === "expired") {
-        this.licenseExpired = true;
-        this.showLicenseExpiredModal();
-      } else if (data.trial && data.days_left <= 3) {
-        this.trialDaysLeft = data.days_left;
-        this.addMessage("system", `\u{1F381} \u8BD5\u7528\u5269\u4F59 ${data.days_left} \u5929\u3002\u53BB deepdig.beaver-cloud.com \u8BA2\u9605`);
-      } else if (data.trial) {
-        this.trialDaysLeft = data.days_left;
-      } else {
-        this.licenseExpired = false;
-        this.trialDaysLeft = 0;
+      const daysSince = (Date.now() - new Date(firstRun).getTime()) / 864e5;
+      if (daysSince <= 7) {
+        this.licenseValid = true;
+        return;
       }
-      this.authToken = token;
-    } catch {
-      this.licenseExpired = false;
+      this.licenseValid = false;
+      this.showLicenseKeyPrompt();
+      return;
+    }
+    if (this.validateKeyHash(this.licenseKey)) {
+      this.licenseValid = true;
+      if (Date.now() - this.lastGumroadCheck > 6048e5) {
+        this.verifyGumroadOnline(this.licenseKey).catch(() => {
+        });
+      }
+      return;
+    }
+    const onlineValid = await this.verifyGumroadOnline(this.licenseKey);
+    this.licenseValid = onlineValid;
+    if (!onlineValid) {
+      this.showLicenseKeyPrompt();
     }
   }
-  showLicenseExpiredModal() {
+  async verifyGumroadOnline(key) {
+    try {
+      const resp = await fetch("https://api.gumroad.com/v2/licenses/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `product_permalink=deepdig-cc&license_key=${encodeURIComponent(key)}`
+      });
+      const data = await resp.json();
+      this.lastGumroadCheck = Date.now();
+      return data.success === true && !data.license?.cancelled;
+    } catch {
+      return true;
+    }
+  }
+  validateKeyHash(key) {
+    return /^[A-Za-z0-9]{8,12}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12,16}$/.test(key);
+  }
+  showLicenseKeyPrompt() {
+    this.licenseValid = false;
+    this.sendBtn.disabled = true;
+    this.inputEl.placeholder = "\u8BF7\u8F93\u5165 License Key \xB7 \u8BBE\u7F6E\u9762\u677F\u6216 deepdig.beaver-cloud.com";
     this.addMessage(
       "error",
-      "\u26A0\uFE0F \u5957\u9910\u5DF2\u8FC7\u671F\u3002\u6DF1\u5EA6\u5206\u6790\u529F\u80FD\u5DF2\u6682\u505C\u3002\n\n[\u7EED\u8D39\u8BA2\u9605](https://deepdig.beaver-cloud.com) \u2014 \u6253\u5F00\u7F51\u9875\u5B8C\u6210\u652F\u4ED8\u540E\u91CD\u542F\u63D2\u4EF6\u5373\u53EF\u6062\u590D\u4F7F\u7528\u3002"
+      "\u{1F511} \u9700\u8981 License Key \u624D\u80FD\u4F7F\u7528\u6DF1\u5EA6\u5206\u6790\u3002\n\n**\u83B7\u53D6\u65B9\u5F0F**\uFF1A\u8BBF\u95EE [deepdig.beaver-cloud.com](https://deepdig.beaver-cloud.com) \u8BA2\u9605\u5957\u9910\uFF0C\u8D2D\u4E70\u540E\u4F1A\u6536\u5230 License Key\u3002\n**\u6FC0\u6D3B\u65B9\u5F0F**\uFF1A\u5728 Obsidian \u8BBE\u7F6E \u2192 \u6DF1\u5EA6\u6316\u6398 CC \u2192 \u7C98\u8D34 License Key \u2192 \u70B9\u51FB\u9A8C\u8BC1\u3002"
     );
-    this.sendBtn.disabled = true;
-    this.inputEl.placeholder = "\u8BF7\u7EED\u8D39\u540E\u4F7F\u7528 \xB7 deepdig.beaver-cloud.com";
   }
-  async loadStoredToken() {
-    const data = await this.plugin.loadData();
-    return data?.authToken || null;
+  async setLicenseKey(key) {
+    const valid = await this.verifyGumroadOnline(key);
+    if (valid) {
+      this.licenseKey = key;
+      this.licenseValid = true;
+      await this.saveLicenseKey(key);
+      this.sendBtn.disabled = false;
+      this.inputEl.placeholder = "\u6DF1\u6316XX / XX\u8D5B\u9053\u600E\u4E48\u770B / XX\u662F\u4EC0\u4E48";
+      this.addMessage("system", "\u2705 License Key \u9A8C\u8BC1\u6210\u529F \xB7 \u6DF1\u5EA6\u5206\u6790\u5DF2\u6062\u590D");
+    }
+    return valid;
   }
-  async saveStoredToken(token) {
-    const data = await this.plugin.loadData();
-    await this.plugin.saveData({ ...data, authToken: token });
+  async loadLicenseKey() {
+    return this.plugin.settings.licenseKey || null;
+  }
+  async saveLicenseKey(key) {
+    this.plugin.settings.licenseKey = key;
+    await this.plugin.saveSettings();
+  }
+  async getFirstRunDate() {
+    return this.plugin.getExtraData("firstRunDate") || null;
+  }
+  async setFirstRunDate(date) {
+    await this.plugin.setExtraData("firstRunDate", date);
   }
   // ═══ UI 状态指示器 ═══
   showStatus(iconType, text) {
@@ -249,8 +282,8 @@ var ChatView = class extends import_obsidian.ItemView {
   async sendMessage() {
     if (this.busy)
       return;
-    if (this.licenseExpired) {
-      this.showLicenseExpiredModal();
+    if (!this.licenseValid) {
+      this.showLicenseKeyPrompt();
       return;
     }
     const t = this.inputEl.value.trim();
@@ -779,12 +812,12 @@ var ChatView = class extends import_obsidian.ItemView {
       time: m.time,
       id: m.id
     }));
-    await this.plugin.saveData({ ...this.plugin.settings, chatHistory: ts });
+    await this.plugin.setExtraData("chatHistory", ts);
   }
   async loadHistory() {
-    const d = await this.plugin.loadData();
-    if (d?.chatHistory)
-      this.messages = d.chatHistory;
+    const ts = this.plugin.getExtraData("chatHistory");
+    if (ts && Array.isArray(ts))
+      this.messages = ts;
   }
 };
 
@@ -792,10 +825,33 @@ var ChatView = class extends import_obsidian.ItemView {
 var import_obsidian2 = require("obsidian");
 var DEFAULT_SETTINGS = {
   ccCliPath: "claude",
+  licenseKey: "",
   dsApiKey: "",
   autoStart: false,
   showThinking: false
 };
+async function verifyGumroadKey(key) {
+  if (!key || !key.trim()) {
+    return { valid: false, message: "\u8BF7\u8F93\u5165 License Key" };
+  }
+  try {
+    const resp = await fetch("https://api.gumroad.com/v2/licenses/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `product_permalink=deepdig-cc&license_key=${encodeURIComponent(key.trim())}`
+    });
+    const data = await resp.json();
+    if (data.success === true && !data.license?.cancelled) {
+      return { valid: true, message: "\u2705 \u5DF2\u6FC0\u6D3B" };
+    }
+    if (data.license?.cancelled) {
+      return { valid: false, message: "\u274C \u8BA2\u9605\u5DF2\u53D6\u6D88" };
+    }
+    return { valid: false, message: "\u274C Key \u65E0\u6548" };
+  } catch {
+    return { valid: false, message: "\u26A0\uFE0F \u7F51\u7EDC\u4E0D\u53EF\u8FBE\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5" };
+  }
+}
 var DeepDigSettingTab = class extends import_obsidian2.PluginSettingTab {
   plugin;
   constructor(app, plugin) {
@@ -806,6 +862,39 @@ var DeepDigSettingTab = class extends import_obsidian2.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "\u6DF1\u5EA6\u6316\u6398 \xB7 CC \u63D2\u4EF6\u8BBE\u7F6E" });
+    const hasKey = this.plugin.settings.licenseKey && this.plugin.settings.licenseKey.length > 0;
+    const licenseStatusEl = containerEl.createDiv({
+      text: hasKey ? `\u2705 \u5DF2\u6FC0\u6D3B \xB7 ${this.plugin.settings.licenseKey.slice(0, 8)}...` : "\u{1F511} \u672A\u6FC0\u6D3B \xB7 7 \u5929\u514D\u8D39\u8BD5\u7528",
+      cls: "setting-item-description"
+    });
+    licenseStatusEl.style.marginBottom = "8px";
+    licenseStatusEl.style.fontWeight = "600";
+    new import_obsidian2.Setting(containerEl).setName("License Key").setDesc("\u4ECE Gumroad \u8D2D\u4E70\u540E\u83B7\u53D6\u3002\u7C98\u8D34\u540E\u70B9\u51FB\u9A8C\u8BC1\u5373\u53EF\u6FC0\u6D3B\u5168\u90E8\u529F\u80FD\u3002").addText((text) => {
+      text.setPlaceholder("XXXX-XXXX-XXXX-XXXX-XXXXXXXX").setValue(this.plugin.settings.licenseKey || "").onChange(async (value) => {
+        this.plugin.settings.licenseKey = value.trim();
+        await this.plugin.saveSettings();
+      });
+      return text;
+    }).addButton((btn) => {
+      btn.setButtonText("\u9A8C\u8BC1").setCta().onClick(async () => {
+        btn.setButtonText("\u9A8C\u8BC1\u4E2D...");
+        btn.setDisabled(true);
+        const result = await verifyGumroadKey(this.plugin.settings.licenseKey || "");
+        btn.setButtonText("\u9A8C\u8BC1");
+        btn.setDisabled(false);
+        if (result.valid) {
+          licenseStatusEl.setText(`\u2705 \u5DF2\u6FC0\u6D3B \xB7 ${(this.plugin.settings.licenseKey || "").slice(0, 8)}...`);
+        } else {
+          licenseStatusEl.setText(`\u{1F511} ${result.message}`);
+        }
+      });
+      return btn;
+    });
+    containerEl.createEl("p", {
+      text: "\u{1F4A1} License Key \u901A\u8FC7 Gumroad \u8D2D\u4E70\u3002\u63D2\u4EF6\u4E0D\u505A\u4E2D\u95F4\u5546\uFF0CKey \u7531 Gumroad \u7BA1\u7406\u8BA2\u9605\u548C\u7EED\u8D39\uFF0C\u5B58\u4E8E\u672C\u5730\u3002",
+      cls: "setting-item-description"
+    });
+    containerEl.createEl("hr");
     new import_obsidian2.Setting(containerEl).setName("CC CLI \u8DEF\u5F84").setDesc("Claude Code \u547D\u4EE4\u884C\u8DEF\u5F84\uFF0C\u9ED8\u8BA4 claude\uFF08PATH \u4E2D\u5DF2\u5B58\u5728\u65F6\u65E0\u9700\u4FEE\u6539\uFF09").addText((text) => text.setPlaceholder("claude").setValue(this.plugin.settings.ccCliPath).onChange(async (value) => {
       this.plugin.settings.ccCliPath = value || "claude";
       await this.plugin.saveSettings();
@@ -835,6 +924,8 @@ var import_child_process2 = require("child_process");
 (0, import_obsidian3.addIcon)("deepdig-logo", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3-3 4 4 3-3"/><path d="M8 12l3 3 4-4 3 3"/></svg>`);
 var DeepDigCCPlugin = class extends import_obsidian3.Plugin {
   ccProcess = null;
+  /** settings 之外的 data 字段（chatHistory / firstRunDate 等） */
+  extraData = {};
   async onload() {
     await this.loadSettings();
     this.registerView(
@@ -899,12 +990,25 @@ var DeepDigCCPlugin = class extends import_obsidian3.Plugin {
     }
   }
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = await this.loadData();
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+    this.extraData = {};
+    for (const [k, v] of Object.entries(data || {})) {
+      if (!(k in DEFAULT_SETTINGS)) {
+        this.extraData[k] = v;
+      }
+    }
   }
   async saveSettings() {
-    const data = await this.loadData();
-    const chatHistory = data?.chatHistory;
-    await this.saveData({ ...this.settings, chatHistory });
+    await this.saveData({ ...this.extraData, ...this.settings });
+  }
+  /** ChatView 调用：获取 extraData 中的字段 */
+  getExtraData(key) {
+    return this.extraData[key];
+  }
+  async setExtraData(key, value) {
+    this.extraData[key] = value;
+    await this.saveData({ ...this.extraData, ...this.settings });
   }
   /** 检测 claude 命令是否可用 */
   async checkCCInstall() {

@@ -9,6 +9,8 @@ addIcon('deepdig-logo', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24
 export default class DeepDigCCPlugin extends Plugin {
     declare settings: DeepDigSettings;
     private ccProcess: any = null;
+    /** settings 之外的 data 字段（chatHistory / firstRunDate 等） */
+    private extraData: Record<string, any> = {};
 
     async onload() {
         await this.loadSettings();
@@ -94,14 +96,30 @@ export default class DeepDigCCPlugin extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const data = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+        // 提取 settings 之外的字段
+        this.extraData = {};
+        for (const [k, v] of Object.entries(data || {})) {
+            if (!(k in DEFAULT_SETTINGS)) {
+                this.extraData[k] = v;
+            }
+        }
     }
 
     async saveSettings() {
-        // 保留 chatHistory（ChatView 存储在 data 中）
-        const data = await this.loadData();
-        const chatHistory = data?.chatHistory;
-        await this.saveData({ ...this.settings, chatHistory });
+        // 合并 settings + extraData，避免丢失 chatHistory / firstRunDate
+        await this.saveData({ ...this.extraData, ...this.settings });
+    }
+
+    /** ChatView 调用：获取 extraData 中的字段 */
+    getExtraData(key: string): any {
+        return this.extraData[key];
+    }
+
+    async setExtraData(key: string, value: any) {
+        this.extraData[key] = value;
+        await this.saveData({ ...this.extraData, ...this.settings });
     }
 
     /** 检测 claude 命令是否可用 */

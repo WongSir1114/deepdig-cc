@@ -92,65 +92,106 @@ export class ChatView extends ItemView {
     }
     async onClose() { this.stopCC(); }
 
-    // ═══ 授权验证（商业版 v1.0） ═══
-    private authToken: string | null = null;
-    private licenseExpired = false;
-    private trialDaysLeft = 0;
+    // ═══ 授权验证（商业版 v1.1·Gumroad License Key） ═══
+    private licenseValid = false;
+    private licenseKey: string | null = null;
+    private lastGumroadCheck = 0;
 
     private async verifyLicense() {
-        const token = await this.loadStoredToken();
-        if (!token) {
-            // 首次使用——不阻断·允许离线使用7天
-            this.licenseExpired = false;
-            return;
-        }
-        try {
-            const resp = await fetch('https://deepdig.beaver-cloud.com/api/verify-subscription', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            });
-            if (resp.status === 401) {
-                // Token 无效
-                this.licenseExpired = true;
-                this.showLicenseExpiredModal();
+        this.licenseKey = await this.loadLicenseKey();
+        if (!this.licenseKey) {
+            // 首次使用——7天离线试用
+            const firstRun = await this.getFirstRunDate();
+            if (!firstRun) {
+                await this.setFirstRunDate(new Date().toISOString());
+                this.licenseValid = true;
                 return;
             }
-            const data = await resp.json();
-            if (data.status === 'expired') {
-                this.licenseExpired = true;
-                this.showLicenseExpiredModal();
-            } else if (data.trial && data.days_left <= 3) {
-                this.trialDaysLeft = data.days_left;
-                this.addMessage('system', `🎁 试用剩余 ${data.days_left} 天。去 deepdig.beaver-cloud.com 订阅`);
-            } else if (data.trial) {
-                this.trialDaysLeft = data.days_left;
-            } else {
-                this.licenseExpired = false;
-                this.trialDaysLeft = 0;
+            const daysSince = (Date.now() - new Date(firstRun).getTime()) / 86400000;
+            if (daysSince <= 7) {
+                this.licenseValid = true;
+                return;
             }
-            this.authToken = token;
-        } catch {
-            // 网络不可达——不阻断·使用本地缓存的授权状态
-            this.licenseExpired = false;
+            this.licenseValid = false;
+            this.showLicenseKeyPrompt();
+            return;
+        }
+        // 有 Key → 本地哈希验证（离线可用）
+        if (this.validateKeyHash(this.licenseKey)) {
+            this.licenseValid = true;
+            // 每 7 天调一次 Gumroad API 确认订阅有效
+            if (Date.now() - this.lastGumroadCheck > 604800000) {
+                this.verifyGumroadOnline(this.licenseKey).catch(() => {}); // 静默验证
+            }
+            return;
+        }
+        // 本地哈希不通过 → 在线验证
+        const onlineValid = await this.verifyGumroadOnline(this.licenseKey);
+        this.licenseValid = onlineValid;
+        if (!onlineValid) {
+            this.showLicenseKeyPrompt();
         }
     }
 
-    private showLicenseExpiredModal() {
-        this.addMessage('error',
-            '⚠️ 套餐已过期。深度分析功能已暂停。\n\n' +
-            '[续费订阅](https://deepdig.beaver-cloud.com) — 打开网页完成支付后重启插件即可恢复使用。');
+    private async verifyGumroadOnline(key: string): Promise<boolean> {
+        try {
+            const resp = await fetch('https://api.gumroad.com/v2/licenses/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `product_permalink=deepdig-cc&license_key=${encodeURIComponent(key)}`,
+            });
+            const data = await resp.json();
+            this.lastGumroadCheck = Date.now();
+            return data.success === true && !data.license?.cancelled;
+        } catch {
+            // 网络不可达——本地哈希已通过则放行
+            return true;
+        }
+    }
+
+    private validateKeyHash(key: string): boolean {
+        // 简单本地校验：Key 格式为 8段-4段-4段-4段-12段
+        return /^[A-Za-z0-9]{8,12}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12,16}$/.test(key);
+    }
+
+    private showLicenseKeyPrompt() {
+        this.licenseValid = false;
         this.sendBtn.disabled = true;
-        this.inputEl.placeholder = '请续费后使用 · deepdig.beaver-cloud.com';
+        this.inputEl.placeholder = '请输入 License Key · 设置面板或 deepdig.beaver-cloud.com';
+        this.addMessage('error',
+            '🔑 需要 License Key 才能使用深度分析。\n\n' +
+            '**获取方式**：访问 [deepdig.beaver-cloud.com](https://deepdig.beaver-cloud.com) 订阅套餐，购买后会收到 License Key。\n' +
+            '**激活方式**：在 Obsidian 设置 → 深度挖掘 CC → 粘贴 License Key → 点击验证。');
     }
 
-    private async loadStoredToken(): Promise<string | null> {
-        const data = await this.plugin.loadData();
-        return data?.authToken || null;
+    public async setLicenseKey(key: string): Promise<boolean> {
+        const valid = await this.verifyGumroadOnline(key);
+        if (valid) {
+            this.licenseKey = key;
+            this.licenseValid = true;
+            await this.saveLicenseKey(key);
+            this.sendBtn.disabled = false;
+            this.inputEl.placeholder = '深挖XX / XX赛道怎么看 / XX是什么';
+            this.addMessage('system', '✅ License Key 验证成功 · 深度分析已恢复');
+        }
+        return valid;
     }
 
-    private async saveStoredToken(token: string) {
-        const data = await this.plugin.loadData();
-        await this.plugin.saveData({ ...data, authToken: token });
+    private async loadLicenseKey(): Promise<string | null> {
+        return this.plugin.settings.licenseKey || null;
+    }
+
+    private async saveLicenseKey(key: string) {
+        this.plugin.settings.licenseKey = key;
+        await this.plugin.saveSettings();
+    }
+
+    private async getFirstRunDate(): Promise<string | null> {
+        return this.plugin.getExtraData('firstRunDate') || null;
+    }
+
+    private async setFirstRunDate(date: string) {
+        await this.plugin.setExtraData('firstRunDate', date);
     }
 
     // ═══ UI 状态指示器 ═══
@@ -186,8 +227,8 @@ export class ChatView extends ItemView {
 
     async sendMessage() {
         if (this.busy) return;
-        if (this.licenseExpired) {
-            this.showLicenseExpiredModal();
+        if (!this.licenseValid) {
+            this.showLicenseKeyPrompt();
             return;
         }
         const t = this.inputEl.value.trim(); if (!t) return;
@@ -752,10 +793,10 @@ export class ChatView extends ItemView {
             time: m.time,
             id: m.id
         }));
-        await this.plugin.saveData({ ...this.plugin.settings, chatHistory: ts });
+        await this.plugin.setExtraData('chatHistory', ts);
     }
     async loadHistory() {
-        const d = await this.plugin.loadData();
-        if (d?.chatHistory) this.messages = d.chatHistory;
+        const ts = this.plugin.getExtraData('chatHistory');
+        if (ts && Array.isArray(ts)) this.messages = ts;
     }
 }
