@@ -1,0 +1,329 @@
+/* ═══════════════════════════════════════════
+   深度挖掘 · CC 插件 — 聊天面板样式
+   适配 Obsidian 深浅主题
+   ═══════════════════════════════════════════ */
+
+/* ── 容器 ── */
+.deepdig-cc-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--background-primary);
+}
+
+/* ── 头部 ── */
+.dd-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+}
+.dd-logo {
+  color: var(--text-accent);
+  display: flex;
+  align-items: center;
+}
+.dd-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-normal);
+}
+.dd-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+.dd-header-btn {
+  margin-left: auto;
+  padding: 3px 10px;
+  font-size: 11px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.dd-header-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+/* ── 消息区 ── */
+.dd-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+}
+
+/* ── 单条消息 ── */
+.dd-msg {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  animation: ddIn 0.2s ease-out;
+}
+@keyframes ddIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dd-msg.user {
+  flex-direction: row-reverse;
+}
+
+/* 头像 */
+.dd-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+}
+.dd-msg.ai .dd-avatar {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.dd-msg.user .dd-avatar {
+  background: var(--color-green);
+  color: #fff;
+}
+.dd-msg.error .dd-avatar {
+  background: var(--color-red);
+  color: #fff;
+}
+
+/* 消息体 */
+.dd-body {
+  max-width: 82%;
+  min-width: 0;
+}
+.dd-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.dd-copy-btn {
+  margin-left: 8px;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+.dd-msg:hover .dd-copy-btn {
+  opacity: 0.7;
+}
+.dd-copy-btn:hover {
+  opacity: 1 !important;
+  background: var(--background-modifier-hover);
+}
+
+/* 气泡 */
+.dd-bubble {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-normal);
+  word-break: break-word;
+}
+.dd-msg.ai .dd-bubble {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+.dd-msg.user .dd-bubble {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.dd-msg.error .dd-bubble {
+  background: rgba(var(--color-red-rgb), 0.1);
+  border: 1px solid var(--color-red);
+  color: var(--text-error);
+}
+.dd-msg.system .dd-bubble {
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 2px 0;
+}
+
+/* 流式消息 */
+.dd-msg.streaming .dd-bubble {
+  border-left: 2px solid var(--interactive-accent);
+}
+
+/* ── 气泡内 Markdown 样式 ── */
+.dd-bubble p             { margin: 0 0 8px; }
+.dd-bubble p:last-child  { margin-bottom: 0; }
+.dd-bubble strong        { color: var(--text-normal); font-weight: 600; }
+.dd-bubble em            { color: var(--text-accent); }
+.dd-bubble ul, .dd-bubble ol { padding-left: 16px; margin: 4px 0 8px; }
+.dd-bubble li            { margin-bottom: 3px; font-size: 12.5px; }
+.dd-bubble code          { background: var(--background-modifier-hover); padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+.dd-bubble pre           { background: var(--background-primary-alt); padding: 8px 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; margin: 8px 0; }
+.dd-bubble blockquote    { border-left: 3px solid var(--interactive-accent); padding: 4px 12px; margin: 8px 0; color: var(--text-muted); }
+.dd-bubble table         { border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 11.5px; }
+.dd-bubble th            { background: var(--background-modifier-hover); border: 1px solid var(--background-modifier-border); padding: 6px 10px; font-weight: 550; }
+.dd-bubble td            { border: 1px solid var(--background-modifier-border); padding: 5px 10px; }
+.dd-bubble h1, .dd-bubble h2, .dd-bubble h3 { color: var(--text-normal); margin: 12px 0 6px; }
+.dd-bubble h1            { font-size: 1.2em; }
+.dd-bubble h2            { font-size: 1.1em; }
+.dd-bubble h3            { font-size: 1em; }
+.dd-bubble hr            { border: none; border-top: 1px solid var(--background-modifier-border); margin: 12px 0; }
+
+/* ── 底部输入区 ── */
+.dd-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  flex-shrink: 0;
+}
+.dd-input-wrap {
+  margin-bottom: 6px;
+}
+.dd-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  min-height: 38px;
+}
+.dd-input:focus {
+  border-color: var(--interactive-accent);
+}
+.dd-btn-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.dd-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex: 1;
+}
+.dd-send-btn {
+  padding: 6px 18px;
+  border-radius: 6px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+.dd-send-btn:hover {
+  opacity: 0.85;
+}
+.dd-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.dd-stop-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: var(--color-red);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* ── 自适应 ── */
+@media (max-width: 400px) {
+  .dd-body { max-width: 90%; }
+  .dd-bubble { font-size: 12px; padding: 6px 10px; }
+}
+
+/* ── 状态指示器（思考/写卡动画）── */
+.dd-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  animation: dd-fadein 0.3s ease;
+}
+.dd-status-icon {
+  width: 16px; height: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.dd-status.thinking .dd-status-icon::after {
+  content: '';
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  animation: dd-pulse 1.2s ease-in-out infinite;
+}
+.dd-status.cards .dd-status-icon::after {
+  content: '📇';
+  font-size: 14px;
+  animation: dd-bounce 0.6s ease-in-out infinite;
+}
+.dd-status .dd-status-text { flex: 1; }
+.dd-status .dd-status-dots::after {
+  content: '';
+  animation: dd-dots 1.5s steps(4, end) infinite;
+}
+@keyframes dd-dots {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: ''; }
+}
+@keyframes dd-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%      { opacity: 1;   transform: scale(1.2); }
+}
+@keyframes dd-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes dd-fadein {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 卡片通知（可点击展开）── */
+.dd-card-notice {
+  padding: 6px 14px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  animation: dd-fadein 0.3s ease;
+}
+.dd-card-notice:hover {
+  color: var(--text-accent);
+}
+.dd-card-notice .dd-card-count {
+  font-weight: 600;
+  color: var(--text-accent);
+}
+.dd-card-list {
+  display: none;
+  padding: 4px 14px 8px 28px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.dd-card-list.open { display: block; animation: dd-fadein 0.2s ease; }
+.dd-card-list a {
+  color: var(--text-accent);
+  text-decoration: none;
+  display: block;
+  padding: 1px 0;
+}
+.dd-card-list a:hover { text-decoration: underline; }

@@ -1,9 +1,9 @@
 {
   "id": "deepdig-cc",
   "name": "深度挖掘 · CC",
-  "version": "1.0.0",
+  "version": "0.2.5",
   "minAppVersion": "1.5.0",
-  "description": "商业版。Claude Opus 投研引擎 + Obsidian 知识底座。双调用模式·7天免费试用·深度分析+自动建卡。",
+  "description": "方案2.5。Claude Opus 推理引擎 + Obsidian 知识底座。双调用模式(对话+写卡分离)·知识底座注入·不崩溃。",
   "author": "深度挖掘",
   "authorUrl": "https://deepdig.beaver-cloud.com",
   "isDesktopOnly": true

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深度挖掘 · 用户中心</title>
+<style>
+:root {
+  --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #e4e5e7; --muted: #8b8fa3;
+  --accent: #6366f1; --accent-hover: #818cf8; --green: #22c55e; --red: #ef4444; --gold: #f59e0b;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+.container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+a { color: var(--accent); text-decoration: none; } a:hover { color: var(--accent-hover); }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; border: none; transition: .2s; }
+.btn-primary { background: var(--accent); color: #fff; } .btn-primary:hover { background: var(--accent-hover); color: #fff; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); } .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 8px 18px; font-size: 13px; }
+
+.header { border-bottom: 1px solid var(--border); padding: 16px 0; position: sticky; top: 0; background: rgba(15,17,23,0.9); backdrop-filter: blur(12px); z-index: 100; }
+.header .container { display: flex; align-items: center; justify-content: space-between; }
+.header .logo { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; }
+.header nav { display: flex; gap: 12px; align-items: center; }
+
+.landing { padding: 100px 0 80px; text-align: center; }
+.landing h1 { font-size: 48px; font-weight: 800; line-height: 1.2; margin-bottom: 20px; background: linear-gradient(135deg, #6366f1, #22c55e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.landing p { font-size: 19px; color: var(--muted); max-width: 650px; margin: 0 auto 40px; line-height: 1.7; }
+.landing .actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+.features { padding: 80px 0; }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 30px; }
+.feature-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 32px 24px; }
+.feature-card:hover { border-color: var(--accent); }
+.feature-card .icon { font-size: 36px; margin-bottom: 16px; }
+.feature-card h3 { font-size: 18px; margin-bottom: 10px; }
+.feature-card p { color: var(--muted); font-size: 14px; line-height: 1.7; }
+
+.pricing-section { padding: 80px 0; }
+.pricing-section h2 { text-align: center; font-size: 32px; margin-bottom: 16px; }
+.pricing-section .sub { text-align: center; color: var(--muted); margin-bottom: 50px; }
+.pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 950px; margin: 0 auto; }
+.plan-card { background: var(--card); border: 2px solid var(--border); border-radius: 14px; padding: 36px 28px; text-align: center; position: relative; transition: .2s; }
+.plan-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+.plan-card.featured { border-color: var(--accent); background: linear-gradient(180deg, rgba(99,102,241,0.08) 0%, var(--card) 40%); }
+.plan-card .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 4px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.plan-card .plan-name { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.plan-card .plan-price { font-size: 42px; font-weight: 800; margin: 16px 0 4px; }
+.plan-card .plan-price span { font-size: 16px; font-weight: 400; color: var(--muted); }
+.plan-card .plan-desc { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+.plan-card .features-list { text-align: left; margin-bottom: 28px; list-style: none; }
+.plan-card .features-list li { padding: 6px 0; font-size: 14px; }
+.plan-card .features-list li::before { content: "✓"; color: var(--green); margin-right: 8px; font-weight: 700; }
+.plan-card .btn { width: 100%; justify-content: center; }
+
+.auth-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 40px; width: 100%; max-width: 440px; margin: 80px auto; }
+.auth-card h2 { text-align: center; margin-bottom: 8px; }
+.auth-card .sub { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+.form-group { margin-bottom: 18px; }
+.form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.form-group input { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 15px; outline: none; }
+.form-group input:focus { border-color: var(--accent); }
+.auth-card .btn { width: 100%; justify-content: center; margin-top: 8px; }
+.auth-card .footer { text-align: center; margin-top: 20px; font-size: 14px; color: var(--muted); }
+
+.account { padding: 60px 0; }
+.account-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 700px) { .account-grid { grid-template-columns: 1fr; } }
+.acct-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
+.acct-card h3 { margin-bottom: 16px; font-size: 18px; }
+.acct-card .label { color: var(--muted); font-size: 13px; }
+.acct-card .value { font-size: 24px; font-weight: 700; margin: 4px 0; }
+.acct-card .meta { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.status-active { color: var(--green); } .status-expired { color: var(--red); } .status-trial { color: var(--gold); }
+.trial-banner { background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(99,102,241,0.1)); border: 1px solid var(--gold); border-radius: 10px; padding: 16px 24px; margin-bottom: 24px; display: none; }
+.footer { border-top: 1px solid var(--border); padding: 30px 0; text-align: center; color: var(--muted); font-size: 13px; margin-top: 60px; }
+.toast { position: fixed; top: 20px; right: 20px; z-index: 300; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; transform: translateX(120%); transition: .3s; }
+.toast.show { transform: translateX(0); }
+.toast.success { background: #065f46; color: #d1fae5; }
+.toast.error { background: #7f1d1d; color: #fecaca; }
+</style>
+</head>
+<body>
+<header class="header"><div class="container">
+  <a href="#/" class="logo" style="color:var(--text)">🧠 深度挖掘</a>
+  <nav id="nav">
+    <a href="#/">首页</a>
+    <a href="#/pricing">定价</a>
+    <a href="#/login" id="navLogin">登录</a>
+    <a href="#/register" class="btn btn-primary btn-sm" id="navRegister">免费试用</a>
+    <span id="navUser" style="display:none;">
+      <a href="#/account" class="btn btn-outline btn-sm">我的账户</a>
+    </span>
+  </nav>
+</div></header>
+<div class="toast" id="toast"></div>
+<main id="main"></main>
+<footer class="footer"><p>© 2026 深度挖掘 · Beaver Technology</p></footer>
+
+<script>
+const API = 'https://deepdig.beaver-cloud.com';
+const PLANS = {
+  monthly: { key:'monthly', name:'月付套餐', price:'68', period:'月', auto:false },
+  continuous: { key:'continuous', name:'连续包月', price:'48', period:'月·自动续费', auto:true },
+  yearly: { key:'yearly', name:'年付套餐', price:'488', period:'年', auto:false },
+};
+
+function tkn() { return localStorage.getItem('dd_token'); }
+function stkn(v) { localStorage.setItem('dd_token', v); }
+function clr() { localStorage.removeItem('dd_token'); }
+function loggedIn() { return !!tkn(); }
+
+async function api(method, path, body) {
+  const h = { 'Content-Type': 'application/json' };
+  const t = tkn(); if (t) h['Authorization'] = 'Bearer ' + t;
+  const r = await fetch(API + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.detail || '请求失败');
+  return d;
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast ' + (type||'success') + ' show';
+  setTimeout(function() { el.classList.remove('show'); }, 3000);
+}
+
+function navUpdate() {
+  var li = loggedIn();
+  document.getElementById('navLogin').style.display = li ? 'none' : '';
+  document.getElementById('navRegister').style.display = li ? 'none' : '';
+  document.getElementById('navUser').style.display = li ? '' : 'none';
+}
+
+var main = document.getElementById('main');
+
+function pageHome() {
+  if (loggedIn()) { location.hash = '#/account'; return; }
+  main.innerHTML =
+'<section class="landing"><div class="container">'+
+'<h1>AI 投研分析师<br>在你的 Obsidian 里</h1>'+
+'<p>Claude Opus 推理引擎 · 对话式深度分析 · 知识卡片自动生成。<br>7天免费试用 · 不限次数 · 深度分析质量远超 ChatGPT。</p>'+
+'<div class="actions"><a href="#/register" class="btn btn-primary btn-sm">免费试用 7 天</a><a href="#/pricing" class="btn btn-outline btn-sm">查看定价</a></div>'+
+'</div></section>'+
+'<section class="features"><div class="container"><div class="features-grid">'+
+'<div class="feature-card"><div class="icon">🧠</div><h3>Claude Opus 引擎</h3><p>全球最强推理模型。巴菲特护城河、芒格逆向、费雪成长股——22张投资思想卡内化在分析中。</p></div>'+
+'<div class="feature-card"><div class="icon">💬</div><h3>对话式投研</h3><p>像微信聊天一样问投资问题。有洞察、有数据、有判断——不是在提交报告。</p></div>'+
+'<div class="feature-card"><div class="icon">📇</div><h3>知识卡片自动生成</h3><p>分析自动沉淀为 Obsidian 知识卡片。双向链接，越用越聪明。</p></div>'+
+'<div class="feature-card"><div class="icon">📊</div><h3>L4 尽调框架</h3><p>10维深度分析：治理·护城河·成长·经营·估值·逆向——体系化投研。</p></div>'+
+'<div class="feature-card"><div class="icon">🔌</div><h3>Obsidian 原生</h3><p>侧边栏聊天面板。Write 工具直写 Vault。离线可用·数据只在你的电脑。</p></div>'+
+'<div class="feature-card"><div class="icon">🌱</div><h3>知识底座</h3><p>L1政策卡×4、L2赛道卡×13、关键词卡×13。分析有框架，不靠搜索拼凑。</p></div>'+
+'</div></div></section>'+
+'<section class="pricing-section" id="pricing"><div class="container"><h2>简单定价</h2><p class="sub">新用户注册即享 7 天全功能免费试用 · 不限次数</p><div class="pricing-grid">'+
+'<div class="plan-card"><div class="plan-name">月付</div><div class="plan-price">¥68<span>/月</span></div><div class="plan-desc">灵活按月付费</div><ul class="features-list"><li>无限深度分析</li><li>卡片自动生成</li><li>完整知识底座</li><li>Claude Opus 引擎</li></ul><a href="#/register" class="btn btn-outline">免费试用</a></div>'+
+'<div class="plan-card featured"><div class="badge">推荐</div><div class="plan-name">连续包月</div><div class="plan-price">¥48<span>/月</span></div><div class="plan-desc">自动续费·随时取消</div><ul class="features-list"><li>无限深度分析</li><li>卡片自动生成</li><li>完整知识底座</li><li>Claude Opus 引擎</li><li>省 ¥20/月 vs 月付</li></ul><a href="#/register" class="btn btn-primary">免费试用</a></div>'+
+'<div class="plan-card"><div class="plan-name">年付</div><div class="plan-price">¥488<span>/年</span></div><div class="plan-desc">省 ¥328 (40%)</div><ul class="features-list"><li>无限深度分析</li><li>卡片自动生成</li><li>完整知识底座</li><li>Claude Opus 引擎</li><li>折算每天 ¥1.34</li></ul><a href="#/register" class="btn btn-outline">免费试用</a></div>'+
+'</div></div></section>';
+}
+
+function pageRegister() {
+  main.innerHTML =
+'<div class="auth-card"><h2>注册 · 免费试用 7 天</h2><p class="sub">全功能开放 · 不限次数 · 无需绑定支付</p>'+
+'<form id="regForm"><div class="form-group"><label>邮箱</label><input type="email" id="re" placeholder="your@email.com" required autofocus></div>'+
+'<div class="form-group"><label>密码（至少6位）</label><input type="password" id="rp" placeholder="••••••" required minlength="6"></div>'+
+'<button type="submit" class="btn btn-primary">注册 · 开始免费试用</button>'+
+'<p class="footer">已有账号？<a href="#/login">立即登录</a></p></form></div>';
+  document.getElementById('regForm').onsubmit = async function(e) {
+    e.preventDefault();
+    try {
+      var d = await api('POST', '/api/register', { email: document.getElementById('re').value, password: document.getElementById('rp').value });
+      stkn(d.token); toast('注册成功！7天免费试用已开启'); location.hash = '#/account';
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+function pageLogin() {
+  main.innerHTML =
+'<div class="auth-card"><h2>登录</h2><p class="sub">欢迎回来</p>'+
+'<form id="loginForm"><div class="form-group"><label>邮箱</label><input type="email" id="le" placeholder="your@email.com" required autofocus></div>'+
+'<div class="form-group"><label>密码</label><input type="password" id="lp" placeholder="••••••" required></div>'+
+'<button type="submit" class="btn btn-primary">登录</button><p class="footer">没有账号？<a href="#/register">免费注册</a></p></form></div>';
+  document.getElementById('loginForm').onsubmit = async function(e) {
+    e.preventDefault();
+    try {
+      var d = await api('POST', '/api/login', { email: document.getElementById('le').value, password: document.getElementById('lp').value });
+      stkn(d.token); location.hash = '#/account';
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+async function pageAccount() {
+  if (!loggedIn()) { location.hash = '#/login'; return; }
+  try {
+    var u = await api('GET', '/api/user/me'), s = u.subscription;
+    var cls = s.status === 'active' ? 'status-active' : s.trial ? 'status-trial' : 'status-expired';
+    var st = s.trial ? '试用中' : s.status === 'active' ? '已订阅' : '已过期';
+    main.innerHTML =
+'<section class="account"><div class="container">'+
+(s.trial ? '<div class="trial-banner" style="display:block">🎁 免费试用中 · 剩余 <b style="color:var(--gold)">'+s.days_left+'</b> 天 · 全功能开放 · 不限次数</div>' : '')+
+'<div class="account-grid">'+
+'<div class="acct-card"><h3>当前套餐</h3><div class="label">'+s.plan_name+'</div><div class="value '+cls+'">'+st+'</div><div class="meta">'+(s.days_left>0?'剩余 '+s.days_left+' 天':'')+(s.expires?' · 到期 '+new Date(s.expires).toLocaleDateString('zh-CN'):'')+'</div>'+(s.auto_renew?'<div class="meta" style="color:var(--accent)">🔄 自动续费已开启</div>':'')+(s.status==='active'&&!s.trial&&s.auto_renew?'<button class="btn btn-outline" onclick="cancel()" style="margin-top:12px;font-size:12px">取消自动续费</button>':'')+'</div>'+
+'<div class="acct-card"><h3>账户信息</h3><div class="label">邮箱</div><div class="value" style="font-size:18px">'+u.email+'</div><div class="meta">注册于 '+new Date(u.created).toLocaleDateString('zh-CN')+'</div></div>'+
+'<div class="acct-card" style="grid-column:1/-1"><h3>升级套餐</h3><div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">'+
+Object.values(PLANS).map(function(p) {
+  return '<div style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center"><div style="font-weight:700;font-size:16px">'+p.name+'</div><div style="font-size:28px;font-weight:800;margin:8px 0">¥'+p.price+'<span style="font-size:14px;font-weight:400;color:var(--muted)">/'+p.period+'</span></div><button class="btn btn-primary" onclick="checkout(\''+p.key+'\')" style="width:100%;margin-top:12px;padding:10px;font-size:14px">'+(s.trial?'试用后订阅':'立即订阅')+'</button></div>';
+}).join('')+
+'</div></div></div>'+
+'<div style="margin-top:20px"><button class="btn btn-outline" onclick="logout()" style="font-size:13px">退出登录</button></div>'+
+'</div></section>';
+  } catch(err) {
+    if (String(err.message).indexOf('401')>=0 || String(err.message).indexOf('过期')>=0) { clr(); location.hash = '#/login'; }
+    else main.innerHTML = '<p style="text-align:center;padding:60px;color:var(--muted)">加载失败：'+err.message+'</p>';
+  }
+}
+
+async function checkout(planKey) {
+  if (!loggedIn()) { location.hash = '#/login'; return; }
+  try {
+    var m = confirm('选择支付方式：\n确定 = 支付宝\n取消 = 微信支付') ? 'alipay' : 'wechat';
+    var o = await api('POST', '/api/payment/request', { method: m, plan: planKey });
+    await api('POST', '/api/payment/callback?order_id=' + o.order_id + '&status=paid');
+    toast('订阅成功！'); location.hash = '#/account'; setTimeout(function(){location.reload();}, 500);
+  } catch(err) { toast(err.message, 'error'); }
+}
+
+async function cancel() {
+  if (!confirm('确定取消自动续费？当前套餐到期后将不再扣款。')) return;
+  try { await api('POST', '/api/cancel-auto-renew'); toast('自动续费已取消'); location.hash = '#/account'; setTimeout(function(){location.reload();}, 500); }
+  catch(err) { toast(err.message, 'error'); }
+}
+
+function logout() { clr(); location.hash = '#/'; location.reload(); }
+
+async function router() {
+  navUpdate();
+  var p = location.hash.slice(1) || '/';
+  switch(p) {
+    case '/': pageHome(); break;
+    case '/pricing': pageHome(); setTimeout(function(){var el=document.getElementById('pricing');if(el)el.scrollIntoView({behavior:'smooth'});},200); break;
+    case '/register': pageRegister(); break;
+    case '/login': pageLogin(); break;
+    case '/account': await pageAccount(); break;
+    default: pageHome();
+  }
+}
+window.addEventListener('hashchange', router);
+window.addEventListener('load', router);
+window.checkout = checkout;
+window.cancel = cancel;
+window.logout = logout;
+</script>
+</body>
+</html>
