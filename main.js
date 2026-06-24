@@ -151,9 +151,65 @@ var ChatView = class extends import_obsidian.ItemView {
     } else {
       this.renderWelcome();
     }
+    this.verifyLicense().catch(() => {
+    });
   }
   async onClose() {
     this.stopCC();
+  }
+  // ═══ 授权验证（商业版 v1.0） ═══
+  authToken = null;
+  licenseExpired = false;
+  trialDaysLeft = 0;
+  async verifyLicense() {
+    const token = await this.loadStoredToken();
+    if (!token) {
+      this.licenseExpired = false;
+      return;
+    }
+    try {
+      const resp = await fetch("https://deepdig.beaver-cloud.com/api/verify-subscription", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
+      });
+      if (resp.status === 401) {
+        this.licenseExpired = true;
+        this.showLicenseExpiredModal();
+        return;
+      }
+      const data = await resp.json();
+      if (data.status === "expired") {
+        this.licenseExpired = true;
+        this.showLicenseExpiredModal();
+      } else if (data.trial && data.days_left <= 3) {
+        this.trialDaysLeft = data.days_left;
+        this.addMessage("system", `\u{1F381} \u8BD5\u7528\u5269\u4F59 ${data.days_left} \u5929\u3002\u53BB deepdig.beaver-cloud.com \u8BA2\u9605`);
+      } else if (data.trial) {
+        this.trialDaysLeft = data.days_left;
+      } else {
+        this.licenseExpired = false;
+        this.trialDaysLeft = 0;
+      }
+      this.authToken = token;
+    } catch {
+      this.licenseExpired = false;
+    }
+  }
+  showLicenseExpiredModal() {
+    this.addMessage(
+      "error",
+      "\u26A0\uFE0F \u5957\u9910\u5DF2\u8FC7\u671F\u3002\u6DF1\u5EA6\u5206\u6790\u529F\u80FD\u5DF2\u6682\u505C\u3002\n\n[\u7EED\u8D39\u8BA2\u9605](https://deepdig.beaver-cloud.com) \u2014 \u6253\u5F00\u7F51\u9875\u5B8C\u6210\u652F\u4ED8\u540E\u91CD\u542F\u63D2\u4EF6\u5373\u53EF\u6062\u590D\u4F7F\u7528\u3002"
+    );
+    this.sendBtn.disabled = true;
+    this.inputEl.placeholder = "\u8BF7\u7EED\u8D39\u540E\u4F7F\u7528 \xB7 deepdig.beaver-cloud.com";
+  }
+  async loadStoredToken() {
+    const data = await this.plugin.loadData();
+    return data?.authToken || null;
+  }
+  async saveStoredToken(token) {
+    const data = await this.plugin.loadData();
+    await this.plugin.saveData({ ...data, authToken: token });
   }
   // ═══ UI 状态指示器 ═══
   showStatus(iconType, text) {
@@ -193,6 +249,10 @@ var ChatView = class extends import_obsidian.ItemView {
   async sendMessage() {
     if (this.busy)
       return;
+    if (this.licenseExpired) {
+      this.showLicenseExpiredModal();
+      return;
+    }
     const t = this.inputEl.value.trim();
     if (!t)
       return;

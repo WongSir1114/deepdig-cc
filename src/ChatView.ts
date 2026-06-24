@@ -87,8 +87,71 @@ export class ChatView extends ItemView {
         } else {
             this.renderWelcome();
         }
+        // 商业版：验证授权
+        this.verifyLicense().catch(() => {});
     }
     async onClose() { this.stopCC(); }
+
+    // ═══ 授权验证（商业版 v1.0） ═══
+    private authToken: string | null = null;
+    private licenseExpired = false;
+    private trialDaysLeft = 0;
+
+    private async verifyLicense() {
+        const token = await this.loadStoredToken();
+        if (!token) {
+            // 首次使用——不阻断·允许离线使用7天
+            this.licenseExpired = false;
+            return;
+        }
+        try {
+            const resp = await fetch('https://deepdig.beaver-cloud.com/api/verify-subscription', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            });
+            if (resp.status === 401) {
+                // Token 无效
+                this.licenseExpired = true;
+                this.showLicenseExpiredModal();
+                return;
+            }
+            const data = await resp.json();
+            if (data.status === 'expired') {
+                this.licenseExpired = true;
+                this.showLicenseExpiredModal();
+            } else if (data.trial && data.days_left <= 3) {
+                this.trialDaysLeft = data.days_left;
+                this.addMessage('system', `🎁 试用剩余 ${data.days_left} 天。去 deepdig.beaver-cloud.com 订阅`);
+            } else if (data.trial) {
+                this.trialDaysLeft = data.days_left;
+            } else {
+                this.licenseExpired = false;
+                this.trialDaysLeft = 0;
+            }
+            this.authToken = token;
+        } catch {
+            // 网络不可达——不阻断·使用本地缓存的授权状态
+            this.licenseExpired = false;
+        }
+    }
+
+    private showLicenseExpiredModal() {
+        this.addMessage('error',
+            '⚠️ 套餐已过期。深度分析功能已暂停。\n\n' +
+            '[续费订阅](https://deepdig.beaver-cloud.com) — 打开网页完成支付后重启插件即可恢复使用。');
+        this.sendBtn.disabled = true;
+        this.inputEl.placeholder = '请续费后使用 · deepdig.beaver-cloud.com';
+    }
+
+    private async loadStoredToken(): Promise<string | null> {
+        const data = await this.plugin.loadData();
+        return data?.authToken || null;
+    }
+
+    private async saveStoredToken(token: string) {
+        const data = await this.plugin.loadData();
+        await this.plugin.saveData({ ...data, authToken: token });
+    }
 
     // ═══ UI 状态指示器 ═══
     private showStatus(iconType: 'thinking' | 'cards', text: string): HTMLElement {
@@ -122,7 +185,12 @@ export class ChatView extends ItemView {
     }
 
     async sendMessage() {
-        if (this.busy) return; const t = this.inputEl.value.trim(); if (!t) return;
+        if (this.busy) return;
+        if (this.licenseExpired) {
+            this.showLicenseExpiredModal();
+            return;
+        }
+        const t = this.inputEl.value.trim(); if (!t) return;
         this.inputEl.value = ''; this.addMessage('user', t);
         this.busy = true; this.sendBtn.disabled = true; this.stopBtn.style.display = 'inline-block';
         await this.runCC(t);
