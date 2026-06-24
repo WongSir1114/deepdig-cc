@@ -281,11 +281,18 @@ var ChatView = class extends import_obsidian.ItemView {
       const convFiles = this.verifyCardsWritten();
       if (shouldWriteCards) {
         const cardStandards = [
+          "\u3010\u786C\u7EA6\u675F\u2014\u2014\u8FDD\u53CD\u5219\u5199\u5361\u65E0\u6548\u3011",
+          "- \u53EA\u5199\u4E0B\u9762\u5217\u51FA\u7684\u5361\u7247\u3002\u4E0D\u78B0\u4EFB\u4F55\u5176\u4ED6\u6587\u4EF6\u3002\u4E0D\u4FEE\u6539\u5DF2\u6709\u5361\u7247\u7684\u5185\u5BB9\u3002",
+          "- \u4E0D\u9700\u8981\u626B\u63CFVault\u4E2D\u5DF2\u6709\u5361\u7247\u2014\u2014\u76F4\u63A5\u5199\u65B0\u5361\u5C31\u884C\u3002",
+          `- \u9700\u8981\u5199\u7684\u5361\u7247\u6E05\u5355\uFF1A${cardList}`,
+          "- \u672C\u8F6E\u6700\u591A\u5199 15 \u4E2A\u6587\u4EF6\u3002\u8D85\u8FC7\u5C31\u505C\u6B62\u3002",
+          "",
           "=== \u4EE5\u4E0B\u662F\u4E0A\u4E00\u8F6E\u5206\u6790\u7684\u5168\u90E8\u5185\u5BB9 ===",
-          convOutput,
+          convOutput.slice(0, 15e3),
+          // 截断——分析太长也会浪费token
           "",
           "=== \u5199\u5361\u6307\u4EE4 ===",
-          `\u57FA\u4E8E\u4EE5\u4E0A\u5206\u6790\uFF0C\u5C06\u4EE5\u4E0B\u5361\u7247\u5199\u5165 Obsidian Vault\uFF08${vaultPath}\uFF09\uFF1A`,
+          `\u57FA\u4E8E\u4EE5\u4E0A\u5206\u6790\uFF0C\u53EA\u5199\u4EE5\u4E0B\u5361\u7247\u5230 Obsidian Vault\uFF08${vaultPath}\uFF09\uFF1A`,
           cardList,
           "",
           "=== \u5361\u7247\u5236\u4F5C\u6807\u51C6\uFF08\u4E0E\u5E95\u5EA7\u7248 v0.26 \u4E00\u81F4\xB7\u5F3A\u5236\u6267\u884C\uFF09===",
@@ -368,10 +375,11 @@ var ChatView = class extends import_obsidian.ItemView {
           "\u5199\u5B8C\u540E\u5728\u672B\u5C3E\u5355\u72EC\u4E00\u884C\uFF1A##CARDS_DONE"
         ].join("\n");
         this.scanExistingCards();
-        await this.spawnCC(ccPath, vaultPath, cardStandards, 90, false);
+        await this.spawnCC(ccPath, vaultPath, cardStandards, 40, false);
       }
       const allFiles = this.verifyCardsWritten();
-      const allFileNames = [.../* @__PURE__ */ new Set([...convFiles.found, ...allFiles.found])];
+      const newFiles = allFiles.found.filter((f) => !this.cardSnapshot.has(f));
+      const allFileNames = [.../* @__PURE__ */ new Set([...convFiles.found.filter((f) => !this.cardSnapshot.has(f)), ...newFiles])];
       if (allFileNames.length > 0) {
         this.lastWriteResult = { files: allFileNames };
         this.addMessage("system", `\u{1F4C7} \u5DF2\u66F4\u65B0 ${allFileNames.length} \u5F20\u5361\u7247`);

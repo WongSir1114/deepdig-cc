@@ -248,11 +248,17 @@ export class ChatView extends ItemView {
         if (shouldWriteCards) {
             // ═══ 底座版卡片标准（v0.26·与本地CC一致）═══
             const cardStandards = [
+                '【硬约束——违反则写卡无效】',
+                '- 只写下面列出的卡片。不碰任何其他文件。不修改已有卡片的内容。',
+                '- 不需要扫描Vault中已有卡片——直接写新卡就行。',
+                `- 需要写的卡片清单：${cardList}`,
+                '- 本轮最多写 15 个文件。超过就停止。',
+                '',
                 '=== 以下是上一轮分析的全部内容 ===',
-                convOutput,
+                convOutput.slice(0, 15000),  // 截断——分析太长也会浪费token
                 '',
                 '=== 写卡指令 ===',
-                `基于以上分析，将以下卡片写入 Obsidian Vault（${vaultPath}）：`,
+                `基于以上分析，只写以下卡片到 Obsidian Vault（${vaultPath}）：`,
                 cardList,
                 '',
                 '=== 卡片制作标准（与底座版 v0.26 一致·强制执行）===',
@@ -335,14 +341,15 @@ export class ChatView extends ItemView {
                 '写完后在末尾单独一行：##CARDS_DONE',
             ].join('\n');
 
-            // 写卡调用 —— 静默·不渲染
-            this.scanExistingCards(); // 重新拍快照（对话调用可能已写了部分文件）
-            await this.spawnCC(ccPath, vaultPath, cardStandards, 90, false);
+            // 写卡调用 —— 静默·不渲染（减少turns至40·只写新卡）
+            this.scanExistingCards();
+            await this.spawnCC(ccPath, vaultPath, cardStandards, 40, false);
         }
 
-        // 合并检测所有写入的文件
+        // 只显示真正新建的文件（不在快照中的）·不显示被mtime误判的旧文件
         const allFiles = this.verifyCardsWritten();
-        const allFileNames = [...new Set([...convFiles.found, ...allFiles.found])];
+        const newFiles = allFiles.found.filter(f => !this.cardSnapshot.has(f));
+        const allFileNames = [...new Set([...convFiles.found.filter(f => !this.cardSnapshot.has(f)), ...newFiles])];
 
         if (allFileNames.length > 0) {
             this.lastWriteResult = { files: allFileNames };
