@@ -1,10 +1,10 @@
 {
-  "id": "deepdig-cc",
+  "id": "wongsir-deepdig",
   "name": "深度挖掘 · CC",
   "version": "1.0.0",
   "minAppVersion": "1.5.0",
-  "description": "商业版。Claude Opus 投研引擎 + Obsidian 知识底座。双调用模式·7天免费试用·深度分析+自动建卡。",
-  "author": "深度挖掘",
+  "description": "商业版•Claude Opus 投研引擎 + Obsidian 知识底座。双调用模式·7天免费试用·深度分析+自动建卡。",
   "authorUrl": "https://deepdig.beaver-cloud.com",
+  "author": "深度挖掘",
   "isDesktopOnly": true
 }
